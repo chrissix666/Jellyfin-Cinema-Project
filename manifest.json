@@ -1,0 +1,21 @@
+[
+  {
+    "guid": "a6e6b7d2-2f6a-4c7e-9c1a-6d1e3f9b8a11",
+    "name": "Jellyfin Cinema Loader",
+    "description": "Loads the external Jellyfin Cinema Project script into Jellyfin Web automatically. The actual script itself is not bundled -- it is fetched live from GitHub on every page load, so updates to the script never require reinstalling this plugin.",
+    "overview": "Automatic loader for the Jellyfin Cinema Project userscript.",
+    "owner": "chrissix666",
+    "category": "General",
+    "imageUrl": "",
+    "versions": [
+      {
+        "version": "1.0.1.0",
+        "targetAbi": "10.9.0.0",
+        "sourceUrl": "https://github.com/chrissix666/Jellyfin-Cinema-Project/releases/download/v1.0.1/JellyfinCinemaLoader-v1.0.1.zip",
+        "checksum": "7b2fe7f817a2587b08e53bdfc8a88600",
+        "timestamp": "2026-08-21T00:00:00Z",
+        "changelog": "Initial release. Injects the Cinema Project script tag into Jellyfin Web via File Transformation (preferred) or direct index.html patching (fallback)."
+      }
+    ]
+  }
+]
