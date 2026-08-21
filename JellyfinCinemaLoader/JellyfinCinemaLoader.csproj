@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>JellyfinCinemaLoader</RootNamespace>
+    <AssemblyName>JellyfinCinemaLoader</AssemblyName>
+    <!--
+      GenerateAssemblyInfo=false vermeidet einen Konflikt mit den
+      Assembly-Attributen, die wir weiter unten selbst in Plugin.cs
+      setzen -- ohne das meckert der Compiler ueber doppelte
+      [assembly: ...]-Eintraege.
+    -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Jellyfin.Controller bringt alle Basis-Klassen mit, die ein Plugin
+      braucht (BasePlugin, IHasWebPages, IServerEntryPoint, etc).
+      Version 10.9.* passt zu den meisten aktuell laufenden Jellyfin-
+      10.9/10.10-Servern -- falls der Build wegen einer Versions-
+      Inkompatibilitaet fehlschlaegt, ist DAS die erste Stelle, die wir
+      gemeinsam anpassen.
+    -->
+    <PackageReference Include="Jellyfin.Controller" Version="10.9.*" />
+  </ItemGroup>
+
+</Project>
