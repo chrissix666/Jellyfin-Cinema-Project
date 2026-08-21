@@ -68,14 +68,12 @@ public class Plugin : BasePlugin<PluginConfiguration>
         }
     }
 
-    public override string Name => "Jellyfin Cinema Loader";
+    public override string Name => "Cinema Project";
 
     public override Guid Id => PluginGuid;
 
     public override string Description =>
-        "Laedt das externe Jellyfin Cinema Project Skript automatisch in die Jellyfin-Web-Oberflaeche. " +
-        "Das eigentliche Skript selbst wird nicht mitgeliefert, sondern bei jedem Seitenaufruf live von " +
-        "GitHub nachgeladen -- Updates des Skripts erfordern daher KEINE erneute Installation dieses Plugins.";
+        "Loads the Cinema Project script into Jellyfin Web.";
 
     /// <summary>
     /// Sucht per Reflection nach dem separat installierten "File
@@ -110,14 +108,14 @@ public class Plugin : BasePlugin<PluginConfiguration>
                 return false;
             }
 
-            var payload = new
+            var payload = Newtonsoft.Json.Linq.JObject.FromObject(new
             {
                 id = PluginGuid,
                 fileNamePattern = @"^index\.html$",
                 callbackAssembly = typeof(Plugin).Assembly.FullName,
                 callbackClass = typeof(IndexHtmlTransform).FullName,
                 callbackMethod = nameof(IndexHtmlTransform.Transform),
-            };
+            });
 
             registerMethod.Invoke(null, new object?[] { payload });
             _logger.LogInformation("JellyfinCinemaLoader: erfolgreich bei 'File Transformation' registriert.");
@@ -197,15 +195,37 @@ public class Plugin : BasePlugin<PluginConfiguration>
     {
         public static object Transform(object payload)
         {
-            string? contents = payload?.GetType().GetProperty("contents")?.GetValue(payload) as string;
+            // The payload's exact runtime type isn't something we can
+            // safely assume -- the registration call itself needed a
+            // real Newtonsoft JObject (see TryRegisterWithFileTransformation's
+            // own comment), so this callback's own payload plausibly
+            // is one too, but reflection-based property access (the
+            // ORIGINAL approach here, matching common examples found
+            // elsewhere) won't work on a JObject at all -- its "contents"
+            // is a JSON key reached via the indexer, not a real C#
+            // property discoverable via GetProperty. Handling BOTH
+            // shapes here, trying JObject first, means this doesn't
+            // depend on guessing which one is actually correct.
+            if (payload is Newtonsoft.Json.Linq.JObject jObj)
+            {
+                string? contents = jObj["contents"]?.ToString();
+                if (string.IsNullOrEmpty(contents) || contents.Contains(ScriptUrl, StringComparison.OrdinalIgnoreCase))
+                {
+                    return payload;
+                }
+                jObj["contents"] = Regex.Replace(contents, "</body>", InjectedScriptTag + "</body>", RegexOptions.IgnoreCase);
+                return jObj;
+            }
 
-            if (string.IsNullOrEmpty(contents) || contents.Contains(ScriptUrl, StringComparison.OrdinalIgnoreCase))
+            string? reflContents = payload?.GetType().GetProperty("contents")?.GetValue(payload) as string;
+
+            if (string.IsNullOrEmpty(reflContents) || reflContents.Contains(ScriptUrl, StringComparison.OrdinalIgnoreCase))
             {
                 return payload!;
             }
 
             string patched = Regex.Replace(
-                contents,
+                reflContents,
                 "</body>",
                 InjectedScriptTag + "</body>",
                 RegexOptions.IgnoreCase);
