@@ -1,1 +1,1 @@
-# Jellyfin-Cinema-Project
+# Jellyfin Cinema Project
