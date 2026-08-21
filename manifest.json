@@ -9,6 +9,14 @@
     "imageUrl": "",
     "versions": [
       {
+        "version": "1.0.5.0",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/chrissix666/Jellyfin-Cinema-Project/releases/download/v1.0.5/JellyfinCinemaLoader-v1.0.5.zip",
+        "checksum": "1f995b6c14b625d29e2d866e933355ef",
+        "timestamp": "2026-08-21T00:00:00Z",
+        "changelog": "Rebuilt from a clean, verified commit (v1.0.4's release accidentally shipped a stale pre-fix binary despite the correct source being on main). Tag name now always matches the internal assembly version going forward."
+      },
+      {
         "version": "1.0.4.0",
         "targetAbi": "10.10.0.0",
         "sourceUrl": "https://github.com/chrissix666/Jellyfin-Cinema-Project/releases/download/v1.0.4/JellyfinCinemaLoader-v1.0.4.zip",
