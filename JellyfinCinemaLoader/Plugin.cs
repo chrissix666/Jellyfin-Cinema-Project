@@ -59,13 +59,48 @@ public class Plugin : BasePlugin<PluginConfiguration>
     {
         _logger = logger;
 
-        if (!TryRegisterWithFileTransformation())
+        // Jellyfin loads plugins in some order it controls, not us --
+        // very plausibly alphabetical, which would put "Cinema
+        // Project" before "File Transformation" and mean OUR
+        // constructor runs before THEIRS has finished its own
+        // internal setup. Confirmed directly: the very first
+        // real-world attempt found the assembly fine via reflection
+        // (it's already loaded into memory that early) but calling
+        // RegisterTransformation threw a NullReferenceException FROM
+        // INSIDE their own method -- exactly what an own not-yet-ready
+        // internal static state would produce. Retrying a few times
+        // with a real delay, instead of trying exactly once
+        // synchronously in the constructor, gives their plugin time
+        // to finish regardless of the actual load order Jellyfin
+        // happens to pick. Fire-and-forget on purpose -- the
+        // constructor itself must return quickly; it can't block
+        // server startup for several seconds waiting on this.
+        _ = TryRegisterWithRetriesAsync(applicationPaths);
+    }
+
+    private async System.Threading.Tasks.Task TryRegisterWithRetriesAsync(IApplicationPaths applicationPaths)
+    {
+        const int maxAttempts = 5;
+        const int delayMs = 3000;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            _logger.LogInformation(
-                "JellyfinCinemaLoader: 'File Transformation' Plugin nicht gefunden -- " +
-                "fuehre stattdessen die direkte index.html-Injektion als Rueckfallebene aus.");
-            TryDirectIndexHtmlInjection(applicationPaths);
+            if (TryRegisterWithFileTransformation())
+            {
+                return;
+            }
+
+            if (attempt < maxAttempts)
+            {
+                await System.Threading.Tasks.Task.Delay(delayMs).ConfigureAwait(false);
+            }
         }
+
+        _logger.LogInformation(
+            "JellyfinCinemaLoader: 'File Transformation' nach {Attempts} Versuchen weiterhin nicht erfolgreich -- " +
+            "fuehre stattdessen die direkte index.html-Injektion als Rueckfallebene aus.",
+            maxAttempts);
+        TryDirectIndexHtmlInjection(applicationPaths);
     }
 
     public override string Name => "Cinema Project";
@@ -126,7 +161,14 @@ public class Plugin : BasePlugin<PluginConfiguration>
             // Absichtlich breit gefangen -- ein Fehler HIER darf niemals
             // den ganzen Jellyfin-Serverstart zum Absturz bringen, nur
             // weil ein optionales Begleit-Plugin unerwartet reagiert.
-            _logger.LogWarning(ex, "JellyfinCinemaLoader: Registrierung bei 'File Transformation' fehlgeschlagen.");
+            // Nur auf Debug-Stufe geloggt (kein voller Stacktrace) --
+            // bei bis zu 5 Wiederholungsversuchen wuerde ein volles
+            // Warning+Exception JEDES Mal das Server-Log unnoetig
+            // aufblaehen. Der Aufrufer (TryRegisterWithRetriesAsync)
+            // protokolliert den eigentlichen Fehler ausfuehrlich, aber
+            // nur EINMAL, nach dem letzten, endgueltig gescheiterten
+            // Versuch.
+            _logger.LogDebug(ex, "JellyfinCinemaLoader: Registrierungsversuch bei 'File Transformation' fehlgeschlagen.");
             return false;
         }
     }
