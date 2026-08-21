@@ -11,6 +11,14 @@ on:
     tags: ["v*"]
   workflow_dispatch: {} # also allows manually triggering via the "Run workflow" button on GitHub
 
+# The automatic GITHUB_TOKEN Actions uses is read-only by default --
+# creating a Release and attaching a file to it needs write access to
+# repository contents, which has to be requested explicitly like this,
+# or the release step fails with "Resource not accessible by
+# integration" even though the build itself succeeds fine.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
