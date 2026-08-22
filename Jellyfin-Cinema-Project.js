@@ -4,7 +4,7 @@
     const BUTTON_ID = 'jf-cinema-btn';
     const HEADER_SELECTOR = '.headerRight';
     const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js';
-    const SCRIPT_VERSION = '19.36';
+    const SCRIPT_VERSION = '19.84';
     // Cinema Project needs a real desktop browser -- WebGL2/three.js,
     // mouse-driven look controls, a keyboard console. None of that
     // works on a phone, tablet, or TV, so the button (and therefore
@@ -83,11 +83,32 @@
     //     sits just above the first of the two)
     //   - 'const MENU_CONFIG = {'
     // If asked for a specific line range as of right now: as of
-    // SCRIPT_VERSION 19.36, SMART_LAUNCH_CONFIG is at lines 154–168, the
-    // two Ambient blocks together are at lines 1747–1804, and
-    // MENU_CONFIG is at lines 1925–2204 — but treat these as a
+    // SCRIPT_VERSION 19.84, SMART_LAUNCH_CONFIG is at lines 202–216, the
+    // two Ambient blocks together are at lines 1960–2017, and
+    // MENU_CONFIG is at lines 2138–2421 — but treat these as a
     // snapshot, not a guarantee; re-locate by the search text above if
     // the version number has changed since.
+    //
+    // A FOURTH block, EFFECTIVE_SMART_LAUNCH (search for
+    // 'const EFFECTIVE_SMART_LAUNCH = {'), sits directly after
+    // SMART_LAUNCH_CONFIG's own closing '};' — at lines 237–251 as of
+    // this same SCRIPT_VERSION. It is NOT one of the three script blocks
+    // the workbook mirrors values into/out of either — it is the plugin-
+    // persistence resolution layer (admin-set value if present, else
+    // SMART_LAUNCH_CONFIG's own default), consumed everywhere Cinema
+    // actually makes a Smart Launch decision. Its own header comment
+    // just above it has the full rules.
+    //
+    // A FIFTH block, SPREADSHEET_DEPENDENCY_RULES (search for
+    // 'const SPREADSHEET_DEPENDENCY_RULES = {'), sits directly after
+    // EFFECTIVE_SMART_LAUNCH's own closing '};' — at lines 293–361 as of
+    // this same SCRIPT_VERSION. It is NOT one of the three script blocks
+    // the workbook mirrors values into/out of — Cinema Project's own
+    // runtime never reads it — but if the workbook's own build tooling
+    // (build_v8_final.py, dependencies.py, rows_v4.json, ambient_data.json)
+    // is ever unavailable, this block alone is enough to regenerate the
+    // workbook's live gray-out conditional formatting on the Main Config
+    // and Smart Launch tabs.
     //
     // THE ACCOMPANYING SPREADSHEET, IF ONE IS PROVIDED: a workbook with
     // five tabs — 'Instructions' (general + per-tab usage notes),
@@ -192,6 +213,151 @@
         studios: { default: true, desc: 'true or false — enables Smart Launch for Studio views' },
         persons: { default: true, desc: 'true or false — enables Smart Launch for Person views' },
         autoPlay: { default: 'ambient', desc: "'none', 'movie', 'trailer', 'themevideo', 'themesong', 'fanartwall', or 'ambient' — from a movie's own Detail View in Jellyfin Web, what (if anything) auto-starts for that movie on Cinema launch. Mirrors the poster context-menu entries (minus 'library', which makes no sense as an auto-start target)" },
+    };
+    // ══════════════════════════════════════════════════════════════════
+    // EFFECTIVE_SMART_LAUNCH — the value actually used everywhere Cinema
+    // makes a Smart Launch decision, both here in the outer script (see
+    // detectSmartLaunchContext below) and interpolated into the inner
+    // Cinema page's own read-only CONFIG mirror further down. Resolves
+    // each field to, in order: an admin-set server default (via the
+    // Cinema Project Loader plugin's own config page, injected as
+    // window.__cinemaAdminConfig BEFORE this script tag by the plugin's
+    // Transform() callback) — falling back to SMART_LAUNCH_CONFIG's own
+    // hardcoded default when no admin value is present.
+    //
+    // HARD REQUIREMENT, do not violate when touching this: this script
+    // must keep working completely unchanged when loaded standalone via
+    // JavaScript Injector (or any other plain <script> injection), with
+    // no Cinema Project Loader plugin installed at all — in that case
+    // window.__cinemaAdminConfig is simply undefined, every '?.' access
+    // below short-circuits to undefined, and every '??' falls through to
+    // SMART_LAUNCH_CONFIG's own default, exactly as if this object never
+    // existed. Never assume window.__cinemaAdminConfig is present.
+    // ══════════════════════════════════════════════════════════════════
+    const EFFECTIVE_SMART_LAUNCH = {
+        enabled: window.__cinemaAdminConfig?.smartLaunch?.enabled ?? SMART_LAUNCH_CONFIG.enabled.default,
+        sort: window.__cinemaAdminConfig?.smartLaunch?.sort ?? SMART_LAUNCH_CONFIG.sort.default,
+        filter: window.__cinemaAdminConfig?.smartLaunch?.filter ?? SMART_LAUNCH_CONFIG.filter.default,
+        scroll: window.__cinemaAdminConfig?.smartLaunch?.scroll ?? SMART_LAUNCH_CONFIG.scroll.default,
+        movies: window.__cinemaAdminConfig?.smartLaunch?.movies ?? SMART_LAUNCH_CONFIG.movies.default,
+        moviesDetail: window.__cinemaAdminConfig?.smartLaunch?.moviesDetail ?? SMART_LAUNCH_CONFIG.moviesDetail.default,
+        favorites: window.__cinemaAdminConfig?.smartLaunch?.favorites ?? SMART_LAUNCH_CONFIG.favorites.default,
+        collections: window.__cinemaAdminConfig?.smartLaunch?.collections ?? SMART_LAUNCH_CONFIG.collections.default,
+        genres: window.__cinemaAdminConfig?.smartLaunch?.genres ?? SMART_LAUNCH_CONFIG.genres.default,
+        tags: window.__cinemaAdminConfig?.smartLaunch?.tags ?? SMART_LAUNCH_CONFIG.tags.default,
+        studios: window.__cinemaAdminConfig?.smartLaunch?.studios ?? SMART_LAUNCH_CONFIG.studios.default,
+        persons: window.__cinemaAdminConfig?.smartLaunch?.persons ?? SMART_LAUNCH_CONFIG.persons.default,
+        autoPlay: window.__cinemaAdminConfig?.smartLaunch?.autoPlay ?? SMART_LAUNCH_CONFIG.autoPlay.default,
+    };
+    // ══════════════════════════════════════════════════════════════════
+    // SPREADSHEET_DEPENDENCY_RULES — NOT consumed by Cinema Project's own
+    // runtime code anywhere. This object exists SOLELY so that the
+    // "Cinema Project Config Workbook" (the accompanying .xlsx used to
+    // set new values without hand-editing this script) can be
+    // regenerated from this script ALONE, even if the workbook's own
+    // build tooling (build_v8_final.py, dependencies.py, and the
+    // intermediate rows_v4.json/ambient_data.json files it reads) is
+    // ever lost — e.g. after a chat/session change where those files
+    // weren't carried over. Confirmed directly: an LLM given only this
+    // script plus the existing workbook was able to re-extract Main
+    // Config, Smart Launch, and Ambient Mode's data straight from the
+    // three config blocks below and verify a 100% field-by-field match
+    // against the workbook, with zero access to the build tooling.
+    //
+    // WHAT THIS DESCRIBES: on the workbook's "Main Config" and "Smart
+    // Launch" tabs, a row is shown GRAYED OUT (still safe to edit, but
+    // currently without effect) whenever some OTHER row on the same tab
+    // is set such that this row's own setting can never actually matter
+    // — e.g. every Smart Launch row grays out when 'enabled' is false,
+    // since none of the other 12 fields do anything once Smart Launch
+    // itself is off. This is purely a workbook UI affordance (live
+    // conditional formatting, driven by spreadsheet formulas built from
+    // exactly this data) — it has NOTHING to do with how Cinema Project
+    // itself behaves at runtime, and this script never reads this object.
+    //
+    // FORMAT: { controlledKey: [ [controllingKey, operator, value], ... ] }
+    // — a row for controlledKey is grayed out unless EVERY listed
+    // condition holds true (multiple conditions = AND, matching the
+    // workbook's own live formula logic). operator is one of '==', '!=',
+    // '>', or 'in' (value is an array of alternatives for 'in'). Every
+    // controllingKey here is itself a key from either SMART_LAUNCH_CONFIG
+    // (for smartLaunch below) or MENU_CONFIG (for mainConfig below) —
+    // its OWN default/desc lives in that block, not repeated here.
+    //
+    // If this ever needs regenerating from scratch after a rebuild of
+    // the workbook's own build tooling: this is a straight, lossless
+    // mirror of dependencies.py's SMART_LAUNCH_DEPENDENCIES and
+    // MAIN_CONFIG_DEPENDENCIES dicts — keep the two in sync by hand
+    // whenever either changes; there is no automated link between them.
+    // ══════════════════════════════════════════════════════════════════
+    const SPREADSHEET_DEPENDENCY_RULES = {
+        smartLaunch: {
+            sort: [['enabled', '==', 'true']],
+            filter: [['enabled', '==', 'true']],
+            scroll: [['enabled', '==', 'true']],
+            movies: [['enabled', '==', 'true']],
+            moviesDetail: [['enabled', '==', 'true']],
+            favorites: [['enabled', '==', 'true']],
+            collections: [['enabled', '==', 'true']],
+            genres: [['enabled', '==', 'true']],
+            tags: [['enabled', '==', 'true']],
+            studios: [['enabled', '==', 'true']],
+            persons: [['enabled', '==', 'true']],
+            autoPlay: [['enabled', '==', 'true']],
+        },
+        // Keys here are the Main Config tab's own "Key" column (the last
+        // path segment), NOT the full dotted "Path" — matches how
+        // dependencies.py itself keys MAIN_CONFIG_DEPENDENCIES, since a
+        // handful of these key names could in principle collide across
+        // different branches of MENU_CONFIG but none currently do.
+        mainConfig: {
+            gapPosition: [['repeatMode', '==', 'norepeat']],
+            kioskClearlogo3d: [['kioskShowMode', '!=', 'off']],
+            kioskLogoSpeed: [['kioskShowMode', '!=', 'off'], ['kioskClearlogo3d', '==', 'true']],
+            kioskLogoGlitchFreq: [['kioskShowMode', '!=', 'off'], ['kioskClearlogo3d', '==', 'true']],
+            kioskLogoGlitchIntensity: [['kioskShowMode', '!=', 'off'], ['kioskClearlogo3d', '==', 'true']],
+            kioskBrandingMode: [['kioskShowMode', '!=', 'off'], ['kioskClearlogo3d', '==', 'true']],
+            gamepadDeadzone: [['controllerMovementEnabled', '==', 'true']],
+            lookSensitivity: [['controllerMovementEnabled', '==', 'true']],
+            crouchMode: [['crouchEnabled', '==', 'true']],
+            roomScaleMode: [['roomSize', '!=', '10']],
+            scaleMovementSpeed: [['roomSize', '!=', '10'], ['roomScaleMode', '==', 'full']],
+            scalePlayerPosition: [['roomSize', '!=', '10'], ['roomScaleMode', '==', 'full']],
+            afterMovieThemeSong: [['loopMovie', '==', 'false']],
+            afterMovieScreenArt: [['loopMovie', '==', 'false']],
+            afterTrailerThemeSong: [['loopTrailer', '==', 'false']],
+            afterTrailerScreenArt: [['loopTrailer', '==', 'false']],
+            trailerReplaceAudioOrder: [['replaceAudioTrailer', '==', 'true']],
+            trailerReplaceAudioStartPosition: [['replaceAudioTrailer', '==', 'true']],
+            noThemeSongFallbackTrailer: [['replaceAudioTrailer', '==', 'true']],
+            trailerReplaceAudioStartMin: [['replaceAudioTrailer', '==', 'true'], ['trailerReplaceAudioStartPosition', '==', 'random']],
+            trailerReplaceAudioStartMax: [['replaceAudioTrailer', '==', 'true'], ['trailerReplaceAudioStartPosition', '==', 'random']],
+            afterThemeVideoThemeSong: [['loopThemeVideo', '==', 'false']],
+            afterThemeVideoScreenArt: [['loopThemeVideo', '==', 'false']],
+            themeVideoReplaceAudioOrder: [['replaceAudioThemeVideo', '==', 'true']],
+            themeVideoReplaceAudioStartPosition: [['replaceAudioThemeVideo', '==', 'true']],
+            noThemeSongFallbackThemeVideo: [['replaceAudioThemeVideo', '==', 'true']],
+            themeVideoReplaceAudioStartMin: [['replaceAudioThemeVideo', '==', 'true'], ['themeVideoReplaceAudioStartPosition', '==', 'random']],
+            themeVideoReplaceAudioStartMax: [['replaceAudioThemeVideo', '==', 'true'], ['themeVideoReplaceAudioStartPosition', '==', 'random']],
+            themeSongDelayedStartFirstOnly: [['themeSongPlaybackOrder', 'in', ['all', 'shuffled']]],
+            themeSongFadeFirstOnly: [['themeSongPlaybackOrder', 'in', ['all', 'shuffled']]],
+            themeSongStartMin: [['themeSongStartPosition', '==', 'random']],
+            themeSongStartMax: [['themeSongStartPosition', '==', 'random']],
+            backdropMode: [['backdropLayout', '!=', 'off']],
+            backdropShuffleSeconds: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle']],
+            backdropVideosEnabled: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle']],
+            backdropOverscanMode: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle'], ['backdropVideosEnabled', '==', 'true']],
+            backdropBalanceVideos: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle'], ['backdropVideosEnabled', '==', 'true']],
+            backdropTrailerTiles: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle'], ['backdropVideosEnabled', '==', 'true']],
+            backdropThemeVideoTiles: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle'], ['backdropVideosEnabled', '==', 'true']],
+            backdropMovieTiles: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle'], ['backdropVideosEnabled', '==', 'true']],
+            backdropTrailerOrder: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle'], ['backdropVideosEnabled', '==', 'true'], ['backdropTrailerTiles', '>', 0]],
+            backdropTrailerStart: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle'], ['backdropVideosEnabled', '==', 'true'], ['backdropTrailerTiles', '>', 0]],
+            backdropThemeVideoOrder: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle'], ['backdropVideosEnabled', '==', 'true'], ['backdropThemeVideoTiles', '>', 0]],
+            backdropThemeVideoStart: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle'], ['backdropVideosEnabled', '==', 'true'], ['backdropThemeVideoTiles', '>', 0]],
+            backdropMovieMinPct: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle'], ['backdropVideosEnabled', '==', 'true'], ['backdropMovieTiles', '>', 0]],
+            backdropMovieMaxPct: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle'], ['backdropVideosEnabled', '==', 'true'], ['backdropMovieTiles', '>', 0]],
+        },
     };
     function injectFont() {
         if (document.getElementById('jf-material-symbols')) return;
@@ -2235,19 +2401,19 @@ import * as THREE from '${THREE_CDN}';
         tabIcon: { default: 'cinema', desc: "'cinema' or 'vanilla'" },
         libraryItemOpensIn: { default: 'newtab', desc: "'newtab' or 'origintab' — newtab opens the library item directly in a new browser tab; origintab navigates the original Jellyfin tab to the item, but does not switch focus to it automatically (you need to switch tabs manually)" },
         smartLaunch: {
-          smartLaunchEnabled: { default: ${SMART_LAUNCH_CONFIG.enabled.default}, desc: 'true or false — jump straight into the matching poster view when the Cinema button is pressed from a supported Jellyfin Web view' },
-          smartLaunchSort: { default: ${SMART_LAUNCH_CONFIG.sort.default}, desc: 'true or false — carry over the active Sort from the Jellyfin Web view, where available; otherwise falls back to the Kiosk default' },
-          smartLaunchFilter: { default: ${SMART_LAUNCH_CONFIG.filter.default}, desc: 'true or false — carry over active Filters from the Jellyfin Web view, where available; otherwise falls back to the Kiosk default' },
-          smartLaunchScroll: { default: ${SMART_LAUNCH_CONFIG.scroll.default}, desc: "true or false — carry over the Jellyfin Web scroll position: whichever card is fully visible, topmost-leftmost, becomes the Poster Wall's own starting point. Applies to every sortable/filterable view Smart Launch supports (general Movies, Favourites, Genre, Studio, Tag, Person) except Collections, which has no scrollable card grid of its own" },
-          smartLaunchMovies: { default: ${SMART_LAUNCH_CONFIG.movies.default}, desc: 'true or false — enables Smart Launch for the general Movies library view' },
-          smartLaunchMoviesDetail: { default: ${SMART_LAUNCH_CONFIG.moviesDetail.default}, desc: "true or false — enables Smart Launch from a Movie's own Detail View in Jellyfin Web (the 'backtrack' case: starts the Poster Wall on that exact movie, then continues with Cinema's own default sort — a details page can't reliably tell which of several possible prior list views, each with its own different sort/filter, it was actually reached from, so no attempt is made to guess or carry one over)" },
-          smartLaunchFavorites: { default: ${SMART_LAUNCH_CONFIG.favorites.default}, desc: 'true or false — enables Smart Launch for the Movies Favourites view' },
-          smartLaunchCollections: { default: ${SMART_LAUNCH_CONFIG.collections.default}, desc: 'true or false — enables Smart Launch when inside a specific Collection' },
-          smartLaunchGenres: { default: ${SMART_LAUNCH_CONFIG.genres.default}, desc: 'true or false — enables Smart Launch for Genre views' },
-          smartLaunchTags: { default: ${SMART_LAUNCH_CONFIG.tags.default}, desc: 'true or false — enables Smart Launch for Tag views' },
-          smartLaunchStudios: { default: ${SMART_LAUNCH_CONFIG.studios.default}, desc: 'true or false — enables Smart Launch for Studio views' },
-          smartLaunchPersons: { default: ${SMART_LAUNCH_CONFIG.persons.default}, desc: 'true or false — enables Smart Launch for Person views' },
-          smartLaunchAutoPlay: { default: '${SMART_LAUNCH_CONFIG.autoPlay.default}', desc: "'none', 'movie', 'trailer', 'themevideo', 'themesong', 'fanartwall', or 'ambient' — from a movie's own Detail View in Jellyfin Web, what (if anything) auto-starts for that movie on Cinema launch. Mirrors the poster context-menu entries (minus 'library', which makes no sense as an auto-start target)" },
+          smartLaunchEnabled: { default: ${EFFECTIVE_SMART_LAUNCH.enabled}, desc: 'true or false — jump straight into the matching poster view when the Cinema button is pressed from a supported Jellyfin Web view' },
+          smartLaunchSort: { default: ${EFFECTIVE_SMART_LAUNCH.sort}, desc: 'true or false — carry over the active Sort from the Jellyfin Web view, where available; otherwise falls back to the Kiosk default' },
+          smartLaunchFilter: { default: ${EFFECTIVE_SMART_LAUNCH.filter}, desc: 'true or false — carry over active Filters from the Jellyfin Web view, where available; otherwise falls back to the Kiosk default' },
+          smartLaunchScroll: { default: ${EFFECTIVE_SMART_LAUNCH.scroll}, desc: "true or false — carry over the Jellyfin Web scroll position: whichever card is fully visible, topmost-leftmost, becomes the Poster Wall's own starting point. Applies to every sortable/filterable view Smart Launch supports (general Movies, Favourites, Genre, Studio, Tag, Person) except Collections, which has no scrollable card grid of its own" },
+          smartLaunchMovies: { default: ${EFFECTIVE_SMART_LAUNCH.movies}, desc: 'true or false — enables Smart Launch for the general Movies library view' },
+          smartLaunchMoviesDetail: { default: ${EFFECTIVE_SMART_LAUNCH.moviesDetail}, desc: "true or false — enables Smart Launch from a Movie's own Detail View in Jellyfin Web (the 'backtrack' case: starts the Poster Wall on that exact movie, then continues with Cinema's own default sort — a details page can't reliably tell which of several possible prior list views, each with its own different sort/filter, it was actually reached from, so no attempt is made to guess or carry one over)" },
+          smartLaunchFavorites: { default: ${EFFECTIVE_SMART_LAUNCH.favorites}, desc: 'true or false — enables Smart Launch for the Movies Favourites view' },
+          smartLaunchCollections: { default: ${EFFECTIVE_SMART_LAUNCH.collections}, desc: 'true or false — enables Smart Launch when inside a specific Collection' },
+          smartLaunchGenres: { default: ${EFFECTIVE_SMART_LAUNCH.genres}, desc: 'true or false — enables Smart Launch for Genre views' },
+          smartLaunchTags: { default: ${EFFECTIVE_SMART_LAUNCH.tags}, desc: 'true or false — enables Smart Launch for Tag views' },
+          smartLaunchStudios: { default: ${EFFECTIVE_SMART_LAUNCH.studios}, desc: 'true or false — enables Smart Launch for Studio views' },
+          smartLaunchPersons: { default: ${EFFECTIVE_SMART_LAUNCH.persons}, desc: 'true or false — enables Smart Launch for Person views' },
+          smartLaunchAutoPlay: { default: '${EFFECTIVE_SMART_LAUNCH.autoPlay}', desc: "'none', 'movie', 'trailer', 'themevideo', 'themesong', 'fanartwall', or 'ambient' — from a movie's own Detail View in Jellyfin Web, what (if anything) auto-starts for that movie on Cinema launch. Mirrors the poster context-menu entries (minus 'library', which makes no sense as an auto-start target)" },
         },
       },
  
@@ -14984,7 +15150,7 @@ import * as THREE from '${THREE_CDN}';
         // inert, regardless of what any individual category checkbox
         // says. Checked FIRST, before any URL parsing (or network call)
         // even happens.
-        if (!SMART_LAUNCH_CONFIG.enabled.default) return null;
+        if (!EFFECTIVE_SMART_LAUNCH.enabled) return null;
         const hash = window.location.hash || '';
         const queryString = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : '';
         const params = new URLSearchParams(queryString);
@@ -15016,7 +15182,7 @@ import * as THREE from '${THREE_CDN}';
         // movie grid to begin with, and NOT the movie-detail "backtrack"
         // case further down, which already has its own specific
         // starting movie for a different reason entirely.
-        if (result && SMART_LAUNCH_CONFIG.scroll.default) {
+        if (result && EFFECTIVE_SMART_LAUNCH.scroll) {
             // No artificial delay here — an earlier attempt added one
             // (up to a flat 3 seconds) suspecting a timing/repositioning
             // race, but the REAL cause turned out to be something else
@@ -15063,8 +15229,8 @@ import * as THREE from '${THREE_CDN}';
                     // library launch has no single movie to act on) —
                     // Cinema checks this ONLY once it has actually
                     // rotated the Wall to this exact movie.
-                    if (SMART_LAUNCH_CONFIG.autoPlay.default && SMART_LAUNCH_CONFIG.autoPlay.default !== 'none') {
-                        result.autoPlay = SMART_LAUNCH_CONFIG.autoPlay.default;
+                    if (EFFECTIVE_SMART_LAUNCH.autoPlay && EFFECTIVE_SMART_LAUNCH.autoPlay !== 'none') {
+                        result.autoPlay = EFFECTIVE_SMART_LAUNCH.autoPlay;
                     }
                 }
             } catch (err) { result = null; }
@@ -15074,7 +15240,7 @@ import * as THREE from '${THREE_CDN}';
         // exactly like no detection at all — Cinema falls back to its
         // normal default start, not a half-applied Smart Launch.
         const categoryKey = SMART_LAUNCH_KIND_TO_CATEGORY[result.kind];
-        if (categoryKey && !SMART_LAUNCH_CONFIG[categoryKey].default) return null;
+        if (categoryKey && !EFFECTIVE_SMART_LAUNCH[categoryKey]) return null;
         // ---- Sort/Filter carry-over — only for the list.html-style ----
         // ---- kinds that actually HAVE a sort/filter context at all ----
         // 'collection' and 'person' (detail-page variant) come from a
@@ -15215,11 +15381,11 @@ import * as THREE from '${THREE_CDN}';
             } else if (result.kind === 'genre' || result.kind === 'studio' || result.kind === 'tag' || result.kind === 'person') {
                 lsResult = readListJsQuerySettings(result.kind);
             }
-            if (SMART_LAUNCH_CONFIG.sort.default && lsResult.sortObj && lsResult.sortObj.SortBy) {
+            if (EFFECTIVE_SMART_LAUNCH.sort && lsResult.sortObj && lsResult.sortObj.SortBy) {
                 result.sortBy = lsResult.sortObj.SortBy;
                 if (lsResult.sortObj.SortOrder) result.sortOrder = lsResult.sortObj.SortOrder;
             }
-            if (SMART_LAUNCH_CONFIG.filter.default) {
+            if (EFFECTIVE_SMART_LAUNCH.filter) {
                 const lsFilters = lsResult.filterObj || {};
                 // localStorage values are strings straight from the API
                 // query object (e.g. Genres: "Action|Comedy") — same
