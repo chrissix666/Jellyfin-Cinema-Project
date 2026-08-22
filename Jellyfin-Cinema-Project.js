@@ -4,7 +4,7 @@
     const BUTTON_ID = 'jf-cinema-btn';
     const HEADER_SELECTOR = '.headerRight';
     const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js';
-    const SCRIPT_VERSION = '19.84';
+    const SCRIPT_VERSION = '19.85';
     // Cinema Project needs a real desktop browser -- WebGL2/three.js,
     // mouse-driven look controls, a keyboard console. None of that
     // works on a phone, tablet, or TV, so the button (and therefore
@@ -83,7 +83,7 @@
     //     sits just above the first of the two)
     //   - 'const MENU_CONFIG = {'
     // If asked for a specific line range as of right now: as of
-    // SCRIPT_VERSION 19.84, SMART_LAUNCH_CONFIG is at lines 202–216, the
+    // SCRIPT_VERSION 19.85, SMART_LAUNCH_CONFIG is at lines 202–216, the
     // two Ambient blocks together are at lines 1960–2017, and
     // MENU_CONFIG is at lines 2138–2421 — but treat these as a
     // snapshot, not a guarantee; re-locate by the search text above if
@@ -1999,18 +1999,18 @@ import * as THREE from '${THREE_CDN}';
       { durationValue: 6, env: ['dim', 'backwall'] }, // 2: lights go down, backwall switches on — matches real cinemas dimming BEFORE trailers/ads start, not just before the feature
       { durationValue: 7, env: ['dim', 'backwall', 'screen'] }, // 3: + screen
       { durationValue: 8, env: ['dim', 'backwall', 'screen', 'disc'] }, // 4: + disc — fully built up
-      { durationType: 'time', durationValue: 35, env: ['dim', 'backwall', 'screen', 'disc', 'posterlight'], themeSongFadeIn: 4, themeSongFadeOut: 3, volume: 60, playbackOrder: 'random', loop: true }, // 5: Confrontation begins — everything on
-      { durationType: 'count', durationValue: 1, env: ['dim', 'backwall', 'screen', 'disc', 'posterlight'] }, // 6: the peak — one trailer, everything still on
-      { durationType: 'time', durationValue: 30, env: ['dim', 'backwall', 'screen', 'disc', 'posterlight'], themeSongFadeIn: 3, themeSongFadeOut: 5, volume: 60, playbackOrder: 'random', loop: true }, // 7: Resolution begins — same fullness, longer fade OUT starts the wind-down feel
+      { durationType: 'time', durationValue: 35, env: ['dim', 'backwall', 'screen', 'disc'], themeSongFadeIn: 4, themeSongFadeOut: 3, volume: 60, playbackOrder: 'random', loop: true }, // 5: Confrontation begins — everything on (poster light now off for this step too)
+      { durationType: 'count', durationValue: 1, env: ['dim', 'backwall', 'screen', 'disc'] }, // 6: the peak — one trailer, everything still on (poster light now off for this step too)
+      { durationType: 'time', durationValue: 30, env: ['dim', 'backwall', 'screen', 'disc'], themeSongFadeIn: 3, themeSongFadeOut: 5, volume: 60, playbackOrder: 'random', loop: true }, // 7: Resolution begins — same fullness, longer fade OUT starts the wind-down feel (poster light now off for this step too)
       { durationValue: 7, env: ['dim', 'backwall', 'screen'] }, // 8: − disc, − posterlight — mirrors step 3
       { durationValue: 6, env: ['dim', 'backwall'] }, // 9: − screen — mirrors step 2
       { durationValue: 5, env: [] }, // 10: house lights back up, nothing left switched on — mirrors step 1 exactly, the closing bookend
     ],
     3: [
       { durationValue: 8, env: ['backwall', 'screen', 'disc', 'posterlight'] }, // 1: lights up, brief
-      { durationValue: 8, env: ['backwall', 'screen', 'disc', 'posterlight', 'dim'] }, // 2: lights down, brief
-      { durationType: 'time', durationValue: 45, themeSongDelayedStart: 1, themeSongFadeIn: 3, themeSongFadeOut: 3, volume: 60, env: ['backwall', 'screen', 'disc', 'posterlight', 'dim'], playbackOrder: 'random' }, // 3: a shorter, snappier build than Pre-Show's own — same full environment as its dim neighbors, not a dip mid-arc
-      { durationType: 'count', durationValue: 1, env: ['backwall', 'screen', 'disc', 'posterlight', 'dim'] }, // 4: one trailer — same reasoning as step 3
+      { durationValue: 8, env: ['backwall', 'screen', 'disc', 'dim'] }, // 2: lights down, brief (poster light now off for this step too)
+      { durationType: 'time', durationValue: 45, themeSongDelayedStart: 1, themeSongFadeIn: 3, themeSongFadeOut: 3, volume: 60, env: ['backwall', 'screen', 'disc', 'dim'], playbackOrder: 'random' }, // 3: a shorter, snappier build than Pre-Show's own — same full environment as its dim neighbors, not a dip mid-arc (poster light now off for this step too)
+      { durationType: 'count', durationValue: 1, env: ['backwall', 'screen', 'disc', 'dim'] }, // 4: one trailer — same reasoning as step 3 (poster light now off for this step too)
       { durationType: 'count', durationValue: 1, env: ['dim'], movieStartMode: 'beginning' }, // 5: the movie itself — nothing but dim, DELIBERATELY minimal (unlike steps 3/4, this isn't an arc-position issue: once the actual film is playing, nothing should compete with it for attention)
       { durationValue: 8, env: ['backwall', 'screen', 'disc', 'posterlight'] }, // 6: lights back up once it's over
     ],
@@ -2102,7 +2102,7 @@ import * as THREE from '${THREE_CDN}';
       // applies consistently regardless of which song is playing.
       themeSongDelayedStartFirstOnly: true,
       themeSongFadeFirstOnly: false,
-      env: ['backwall', 'screen', 'disc', 'posterlight', 'dim'], // this step's own Environment Effects — independent per step, no special-casing for any effect (including 'fanartwall', which has no content of its own — an empty env array here is a valid, if silent, step)
+      env: ['backwall', 'screen', 'disc', 'dim'], // this step's own Environment Effects — independent per step, no special-casing for any effect (including 'fanartwall', which has no content of its own — an empty env array here is a valid, if silent, step)
       // 'skip' | 'empty' | 'movie' | 'trailer' | 'themevideo' | 'themesong' | 'fanartwall' | 'previous' | 'sequence:N' (N = a strictly EARLIER step index in this same profile, 1-based)
       // Exactly ONE fallback level is ever attempted — if the fallback
       // itself also can't play (including 'previous' on step 1, which has
@@ -2305,11 +2305,11 @@ import * as THREE from '${THREE_CDN}';
         general: {
           posterMenuTabs: { default: ['library', 'movie', 'trailer', 'themevideo', 'themesong', 'fanartwall', 'ambient'], desc: "Array of enabled poster context-menu entries out of: 'library', 'movie', 'trailer', 'themevideo', 'themesong', 'fanartwall', 'ambient'" },
           hideUnavailableItems: { default: false, desc: 'true or false — hides entries that are enabled above but unavailable for the given poster (e.g. no trailer, or a blocked container like .avi), instead of showing them greyed out' },
-          envMovie: { default: ['backwall', 'screen', 'disc', 'posterlight', 'dim'], desc: "Array of enabled effects out of: 'backwall', 'screen', 'disc', 'posterlight', 'dim'" },
-          envTrailer: { default: ['backwall', 'screen', 'disc', 'posterlight', 'dim'], desc: "Array of enabled effects out of: 'backwall', 'screen', 'disc', 'posterlight', 'dim'" },
-          envThemeVideo: { default: ['backwall', 'screen', 'disc', 'posterlight', 'dim'], desc: "Array of enabled effects out of: 'backwall', 'screen', 'disc', 'posterlight', 'dim'" },
-          envThemeSong: { default: ['backwall', 'screen', 'disc', 'posterlight', 'dim'], desc: "Array of enabled effects out of: 'backwall', 'screen', 'disc', 'posterlight', 'dim'" },
-          envFanartWall: { default: ['backwall', 'screen', 'disc', 'posterlight', 'dim'], desc: "Array of enabled effects out of: 'backwall', 'screen', 'disc', 'posterlight', 'dim'" },
+          envMovie: { default: ['backwall', 'screen', 'disc', 'dim'], desc: "Array of enabled effects out of: 'backwall', 'screen', 'disc', 'posterlight', 'dim'" },
+          envTrailer: { default: ['backwall', 'screen', 'disc', 'dim'], desc: "Array of enabled effects out of: 'backwall', 'screen', 'disc', 'posterlight', 'dim'" },
+          envThemeVideo: { default: ['backwall', 'screen', 'disc', 'dim'], desc: "Array of enabled effects out of: 'backwall', 'screen', 'disc', 'posterlight', 'dim'" },
+          envThemeSong: { default: ['backwall', 'screen', 'disc', 'dim'], desc: "Array of enabled effects out of: 'backwall', 'screen', 'disc', 'posterlight', 'dim'" },
+          envFanartWall: { default: ['backwall', 'screen', 'disc', 'dim'], desc: "Array of enabled effects out of: 'backwall', 'screen', 'disc', 'posterlight', 'dim'" },
         },
         movie: {
           volMovie: { default: 100, desc: 'Integer, 0 to 100 (percent)' },
