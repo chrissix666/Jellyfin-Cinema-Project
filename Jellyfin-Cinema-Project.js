@@ -4,7 +4,7 @@
     const BUTTON_ID = 'jf-cinema-btn';
     const HEADER_SELECTOR = '.headerRight';
     const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js';
-    const SCRIPT_VERSION = '19.86';
+    const SCRIPT_VERSION = '19.90';
     // Cinema Project needs a real desktop browser -- WebGL2/three.js,
     // mouse-driven look controls, a keyboard console. None of that
     // works on a phone, tablet, or TV, so the button (and therefore
@@ -83,15 +83,15 @@
     //     sits just above the first of the two)
     //   - 'const MENU_CONFIG = {'
     // If asked for a specific line range as of right now: as of
-    // SCRIPT_VERSION 19.86, SMART_LAUNCH_CONFIG is at lines 202–216, the
-    // two Ambient blocks together are at lines 1960–2017, and
-    // MENU_CONFIG is at lines 2138–2421 — but treat these as a
+    // SCRIPT_VERSION 19.90, SMART_LAUNCH_CONFIG is at lines 221–235, the
+    // two Ambient blocks together are at lines 2099–2156, and
+    // MENU_CONFIG is at lines 2277–2560 — but treat these as a
     // snapshot, not a guarantee; re-locate by the search text above if
     // the version number has changed since.
     //
     // A FOURTH block, EFFECTIVE_SMART_LAUNCH (search for
     // 'const EFFECTIVE_SMART_LAUNCH = {'), sits directly after
-    // SMART_LAUNCH_CONFIG's own closing '};' — at lines 237–251 as of
+    // SMART_LAUNCH_CONFIG's own closing '};' — at lines 256–270 as of
     // this same SCRIPT_VERSION. It is NOT one of the three script blocks
     // the workbook mirrors values into/out of either — it is the plugin-
     // persistence resolution layer (admin-set value if present, else
@@ -99,9 +99,28 @@
     // actually makes a Smart Launch decision. Its own header comment
     // just above it has the full rules.
     //
-    // A FIFTH block, SPREADSHEET_DEPENDENCY_RULES (search for
+    // A FIFTH block, EFFECTIVE_MENU_CONFIG (search for
+    // 'const EFFECTIVE_MENU_CONFIG = {'), sits directly after
+    // EFFECTIVE_SMART_LAUNCH's own closing '};' — at lines 310–390 as of
+    // this same SCRIPT_VERSION. Same resolution pattern and same
+    // plugin-persistence purpose as EFFECTIVE_SMART_LAUNCH, covering 59
+    // fields across Kiosk, Controls, Display, Room, and Backwall, plus
+    // Misc's own two non-Smart-Launch fields — NOT menu.posters.* (admin
+    // dashboard's Posters tab is still a placeholder) or
+    // menu.misc.smartLaunch.* (already fully covered by
+    // EFFECTIVE_SMART_LAUNCH itself, above). Each value here is
+    // interpolated directly into MENU_CONFIG's own 'default' fields,
+    // further down — NOT read live from MENU_CONFIG.*.default the way
+    // EFFECTIVE_SMART_LAUNCH reads SMART_LAUNCH_CONFIG.*.default,
+    // because MENU_CONFIG itself lives inside buildCinemaHtml()'s own
+    // returned template literal (i.e. it's text for the new Cinema
+    // tab's own document, not real code running out here) — referencing
+    // it from up here would hit a ReferenceError. Its own header
+    // comment just above it has the full architecture and reasoning.
+    //
+    // A SIXTH block, SPREADSHEET_DEPENDENCY_RULES (search for
     // 'const SPREADSHEET_DEPENDENCY_RULES = {'), sits directly after
-    // EFFECTIVE_SMART_LAUNCH's own closing '};' — at lines 293–361 as of
+    // EFFECTIVE_MENU_CONFIG's own closing '};' — at lines 432–500 as of
     // this same SCRIPT_VERSION. It is NOT one of the three script blocks
     // the workbook mirrors values into/out of — Cinema Project's own
     // runtime never reads it — but if the workbook's own build tooling
@@ -248,6 +267,126 @@
         studios: window.__cinemaAdminConfig?.smartLaunch?.studios ?? SMART_LAUNCH_CONFIG.studios.default,
         persons: window.__cinemaAdminConfig?.smartLaunch?.persons ?? SMART_LAUNCH_CONFIG.persons.default,
         autoPlay: window.__cinemaAdminConfig?.smartLaunch?.autoPlay ?? SMART_LAUNCH_CONFIG.autoPlay.default,
+    };
+    // ══════════════════════════════════════════════════════════════════
+    // EFFECTIVE_MENU_CONFIG — same resolution pattern as
+    // EFFECTIVE_SMART_LAUNCH above (admin-set value if present, else the
+    // script's own default), covering 59 fields across Kiosk, Controls,
+    // Display, Room (Design + Kiosk Branding), and Backwall, plus
+    // Misc's own two non-Smart-Launch fields.
+    //
+    // UNLIKE EFFECTIVE_SMART_LAUNCH, this does NOT read MENU_CONFIG.*.
+    // default — MENU_CONFIG itself lives much further down in the file,
+    // inside buildCinemaHtml()'s own returned template literal (i.e. it
+    // is TEXT for the new Cinema tab's own document, not real code that
+    // runs out here). Referencing it from here would hit a
+    // ReferenceError. So each fallback below is the SAME literal value
+    // MENU_CONFIG's own default already is — confirmed to match, field
+    // by field, in the same three-way check that verified everything
+    // else in this session.
+    //
+    // HOW THE RESULT ACTUALLY REACHES THE NEW CINEMA TAB: this object is
+    // evaluated HERE, in the outer script, while still running inside
+    // the ALREADY-OPEN Jellyfin Web page — the one place
+    // window.__cinemaAdminConfig genuinely exists (injected by the
+    // Cinema Project Loader plugin's own Transform() into THIS page's
+    // index.html). openCinemaInNewTab() calls buildCinemaHtml() — which
+    // reads EFFECTIVE_MENU_CONFIG.* below and interpolates each
+    // resolved VALUE (via ${...}) directly into MENU_CONFIG's own
+    // 'default' fields inside the generated HTML text — BEFORE that
+    // text becomes a Blob and a new, entirely separate window is
+    // opened for it. The new tab's own window.__cinemaAdminConfig is
+    // never touched and is never needed: by the time that separate
+    // window exists, MENU_CONFIG already has the right admin-set values
+    // baked in as its own literal defaults. Exactly the same mechanism
+    // already proven correct for smartLaunchAutoPlay's own 'default'
+    // field, further down in MENU_CONFIG's own menu.misc.smartLaunch
+    // mirror section — just extended to the other 59 fields.
+    //
+    // DELIBERATELY NOT COVERED HERE: menu.posters.* (Posters admin tab
+    // is still a placeholder) and menu.misc.smartLaunch.* (already
+    // fully covered by EFFECTIVE_SMART_LAUNCH itself, above).
+    // ══════════════════════════════════════════════════════════════════
+    const EFFECTIVE_MENU_CONFIG = {
+        kiosk: {
+            search: {
+                sortBy: window.__cinemaAdminConfig?.menuConfig?.kiosk?.search?.sortBy ?? 'PremiereDate',
+                sortOrder: window.__cinemaAdminConfig?.menuConfig?.kiosk?.search?.sortOrder ?? 'Descending',
+                sortWall: window.__cinemaAdminConfig?.menuConfig?.kiosk?.search?.sortWall ?? 'sequential-wrap',
+                startWall: window.__cinemaAdminConfig?.menuConfig?.kiosk?.search?.startWall ?? 'left-backwall',
+                repeatMode: window.__cinemaAdminConfig?.menuConfig?.kiosk?.search?.repeatMode ?? 'norepeat',
+                gapPosition: window.__cinemaAdminConfig?.menuConfig?.kiosk?.search?.gapPosition ?? 'balanced',
+            },
+        },
+        menu: {
+            controls: {
+                movementSpeedScale: window.__cinemaAdminConfig?.menuConfig?.menu?.controls?.movementSpeedScale ?? 4,
+                autoSprint: window.__cinemaAdminConfig?.menuConfig?.menu?.controls?.autoSprint ?? true,
+                jumpEnabled: window.__cinemaAdminConfig?.menuConfig?.menu?.controls?.jumpEnabled ?? true,
+                crouchEnabled: window.__cinemaAdminConfig?.menuConfig?.menu?.controls?.crouchEnabled ?? true,
+                crouchMode: window.__cinemaAdminConfig?.menuConfig?.menu?.controls?.crouchMode ?? 'hold',
+                controllerMovementEnabled: window.__cinemaAdminConfig?.menuConfig?.menu?.controls?.controllerMovementEnabled ?? true,
+                gamepadDeadzone: window.__cinemaAdminConfig?.menuConfig?.menu?.controls?.gamepadDeadzone ?? 0.20,
+                lookSensitivity: window.__cinemaAdminConfig?.menuConfig?.menu?.controls?.lookSensitivity ?? 0.20,
+                cinemaKeyboardEnabled: window.__cinemaAdminConfig?.menuConfig?.menu?.controls?.cinemaKeyboardEnabled ?? true,
+                cinemaKeyboardColor: window.__cinemaAdminConfig?.menuConfig?.menu?.controls?.cinemaKeyboardColor ?? '#00ff41',
+                cinemaKeyboardPosition: window.__cinemaAdminConfig?.menuConfig?.menu?.controls?.cinemaKeyboardPosition ?? 'top-center',
+                cinemaKeyboardIdleSeconds: window.__cinemaAdminConfig?.menuConfig?.menu?.controls?.cinemaKeyboardIdleSeconds ?? 3.5,
+            },
+            display: {
+                showCrosshair: window.__cinemaAdminConfig?.menuConfig?.menu?.display?.showCrosshair ?? false,
+                showControlsUi: window.__cinemaAdminConfig?.menuConfig?.menu?.display?.showControlsUi ?? true,
+                fov: window.__cinemaAdminConfig?.menuConfig?.menu?.display?.fov ?? 65,
+                audienceBrightness: window.__cinemaAdminConfig?.menuConfig?.menu?.display?.audienceBrightness ?? 0,
+                cinemaBrightness: window.__cinemaAdminConfig?.menuConfig?.menu?.display?.cinemaBrightness ?? 0,
+                frontWallBrightnessOff: window.__cinemaAdminConfig?.menuConfig?.menu?.display?.frontWallBrightnessOff ?? 1.0,
+                frontWallBrightnessOn: window.__cinemaAdminConfig?.menuConfig?.menu?.display?.frontWallBrightnessOn ?? 0.80,
+                backwallBrightnessOff: window.__cinemaAdminConfig?.menuConfig?.menu?.display?.backwallBrightnessOff ?? 0.45,
+                backwallBrightnessOn: window.__cinemaAdminConfig?.menuConfig?.menu?.display?.backwallBrightnessOn ?? 0.80,
+                posterWallBrightnessOff: window.__cinemaAdminConfig?.menuConfig?.menu?.display?.posterWallBrightnessOff ?? 0.30,
+                posterWallBrightnessOn: window.__cinemaAdminConfig?.menuConfig?.menu?.display?.posterWallBrightnessOn ?? 0.65,
+                posterLightBrightness: window.__cinemaAdminConfig?.menuConfig?.menu?.display?.posterLightBrightness ?? 0.05,
+            },
+            room: {
+                design: {
+                    roomDesign: window.__cinemaAdminConfig?.menuConfig?.menu?.room?.design?.roomDesign ?? 'velvet',
+                    roomSize: window.__cinemaAdminConfig?.menuConfig?.menu?.room?.design?.roomSize ?? '10',
+                    roomScaleMode: window.__cinemaAdminConfig?.menuConfig?.menu?.room?.design?.roomScaleMode ?? 'full',
+                    scaleMovementSpeed: window.__cinemaAdminConfig?.menuConfig?.menu?.room?.design?.scaleMovementSpeed ?? true,
+                    scalePlayerPosition: window.__cinemaAdminConfig?.menuConfig?.menu?.room?.design?.scalePlayerPosition ?? true,
+                    showRopeBarrier: window.__cinemaAdminConfig?.menuConfig?.menu?.room?.design?.showRopeBarrier ?? true,
+                },
+                kiosk: {
+                    kioskShowMode: window.__cinemaAdminConfig?.menuConfig?.menu?.room?.kiosk?.kioskShowMode ?? 'dynamic',
+                    kioskClearlogo3d: window.__cinemaAdminConfig?.menuConfig?.menu?.room?.kiosk?.kioskClearlogo3d ?? true,
+                    kioskBrandingMode: window.__cinemaAdminConfig?.menuConfig?.menu?.room?.kiosk?.kioskBrandingMode ?? 'whenIdleOrMissing',
+                    kioskLogoSpeed: window.__cinemaAdminConfig?.menuConfig?.menu?.room?.kiosk?.kioskLogoSpeed ?? '3',
+                    kioskLogoGlitchFreq: window.__cinemaAdminConfig?.menuConfig?.menu?.room?.kiosk?.kioskLogoGlitchFreq ?? '3',
+                    kioskLogoGlitchIntensity: window.__cinemaAdminConfig?.menuConfig?.menu?.room?.kiosk?.kioskLogoGlitchIntensity ?? '3',
+                },
+            },
+            backwall: {
+                backdropLayout: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropLayout ?? '2x2',
+                backdropMode: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropMode ?? 'shuffle',
+                backdropShuffleSeconds: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropShuffleSeconds ?? 5,
+                backdropOverscanMode: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropOverscanMode ?? 'forced',
+                backdropVideosEnabled: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropVideosEnabled ?? true,
+                backdropBalanceVideos: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropBalanceVideos ?? true,
+                backdropTrailerTiles: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropTrailerTiles ?? '2',
+                backdropTrailerOrder: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropTrailerOrder ?? 'shuffled',
+                backdropTrailerStart: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropTrailerStart ?? 'random',
+                backdropThemeVideoTiles: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropThemeVideoTiles ?? '0',
+                backdropThemeVideoOrder: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropThemeVideoOrder ?? 'shuffled',
+                backdropThemeVideoStart: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropThemeVideoStart ?? 'random',
+                backdropMovieTiles: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropMovieTiles ?? '2',
+                backdropMovieMinPct: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropMovieMinPct ?? 10,
+                backdropMovieMaxPct: window.__cinemaAdminConfig?.menuConfig?.menu?.backwall?.backdropMovieMaxPct ?? 90,
+            },
+            misc: {
+                tabIcon: window.__cinemaAdminConfig?.menuConfig?.menu?.misc?.tabIcon ?? 'cinema',
+                libraryItemOpensIn: window.__cinemaAdminConfig?.menuConfig?.menu?.misc?.libraryItemOpensIn ?? 'newtab',
+            },
+        },
     };
     // ══════════════════════════════════════════════════════════════════
     // SPREADSHEET_DEPENDENCY_RULES — NOT consumed by Cinema Project's own
@@ -737,10 +876,10 @@
   <label class="toggleRow"><input type="checkbox" id="controlsUiToggle" checked /> Controls &amp; UI Overlay <span class="defaultHint" id="controlsUiDefaultHint"></span></label>
   <label>Field of View <span class="defaultHint" id="fovDefaultHint"></span> — <span id="fovValue">65°</span></label>
   <input type="range" id="fovSlider" min="60" max="120" step="1" value="65" />
-  <label>Room Brightness (Light Off) <span class="defaultHint" id="audienceBrightnessDefaultHint"></span> — <span id="audienceBrightnessValue">0</span></label>
-  <input type="range" id="audienceBrightnessSlider" min="-10" max="10" step="1" value="0" />
-  <label>Room Brightness (Light On) <span class="defaultHint" id="cinemaBrightnessDefaultHint"></span> — <span id="cinemaBrightnessValue">0</span></label>
+  <label>Room Brightness (Light Off) <span class="defaultHint" id="cinemaBrightnessDefaultHint"></span> — <span id="cinemaBrightnessValue">0</span></label>
   <input type="range" id="cinemaBrightnessSlider" min="-10" max="10" step="1" value="0" />
+  <label>Room Brightness (Light On) <span class="defaultHint" id="audienceBrightnessDefaultHint"></span> — <span id="audienceBrightnessValue">0</span></label>
+  <input type="range" id="audienceBrightnessSlider" min="-10" max="10" step="1" value="0" />
   <label>Front Wall Brightness (Light Off) <span class="defaultHint" id="frontWallBrightnessOffDefaultHint"></span> — <span id="frontWallBrightnessOffValue">1.00</span></label>
   <input type="range" id="frontWallBrightnessOffSlider" min="0" max="100" step="1" value="100" />
   <label>Front Wall Brightness (Light On) <span class="defaultHint" id="frontWallBrightnessOnDefaultHint"></span> — <span id="frontWallBrightnessOnValue">0.80</span></label>
@@ -1748,7 +1887,7 @@
     <option value="auto">Automatic Crop Black Bars (Overscan) (Experimental, Not Very Functional)</option>
     <option value="forced">Forced Crop Black Bars (Overscan)</option>
   </select>
-  <label id="backdropTrailerTilesLabel">Trailer Tiles <span class="defaultHint" id="backdropTrailerTilesDefaultHint"></span></label>
+  <label id="backdropTrailerTilesLabel">Trailer Tiles (max) <span class="defaultHint" id="backdropTrailerTilesDefaultHint"></span></label>
   <select id="backdropTrailerTilesSelect">
     <option value="0">Off</option>
     <option value="1">1</option>
@@ -1768,7 +1907,7 @@
     <option value="begin">From Beginning</option>
     <option value="random">Random Timestamp</option>
   </select>
-  <label id="backdropThemeVideoTilesLabel">Theme Video Tiles <span class="defaultHint" id="backdropThemeVideoTilesDefaultHint"></span></label>
+  <label id="backdropThemeVideoTilesLabel">Theme Video Tiles (max) <span class="defaultHint" id="backdropThemeVideoTilesDefaultHint"></span></label>
   <select id="backdropThemeVideoTilesSelect">
     <option value="0">Off</option>
     <option value="1">1</option>
@@ -1788,7 +1927,7 @@
     <option value="begin">From Beginning</option>
     <option value="random">Random Timestamp</option>
   </select>
-  <label id="backdropMovieTilesLabel">Movie Tiles <span class="defaultHint" id="backdropMovieTilesDefaultHint"></span></label>
+  <label id="backdropMovieTilesLabel">Movie Tiles (max) <span class="defaultHint" id="backdropMovieTilesDefaultHint"></span></label>
   <select id="backdropMovieTilesSelect">
     <option value="0">Off</option>
     <option value="1">1</option>
@@ -2245,60 +2384,60 @@ import * as THREE from '${THREE_CDN}';
     // ══════════════════════════════════════════════════════════════════
     kiosk: {
       search: {
-        sortBy: { default: 'PremiereDate', desc: "'SortName', 'Random', 'CommunityRating', 'CriticRating', 'DateCreated', 'DatePlayed', 'OfficialRating', 'PlayCount', 'PremiereDate', or 'Runtime'" },
-        sortOrder: { default: 'Descending', desc: "'Ascending' or 'Descending'" },
-        sortWall: { default: 'sequential-wrap', desc: "'alternating', 'sequential', or 'sequential-wrap'" },
-        startWall: { default: 'left-backwall', desc: "'left-screen', 'left-backwall', 'right-screen', or 'right-backwall'" },
-        repeatMode: { default: 'norepeat', desc: "'repeat' or 'norepeat'" },
-        gapPosition: { default: 'balanced', desc: "'end', 'center', 'center-second', or 'balanced'" },
+        sortBy: { default: '${EFFECTIVE_MENU_CONFIG.kiosk.search.sortBy}', desc: "'SortName', 'Random', 'CommunityRating', 'CriticRating', 'DateCreated', 'DatePlayed', 'OfficialRating', 'PlayCount', 'PremiereDate', or 'Runtime'" },
+        sortOrder: { default: '${EFFECTIVE_MENU_CONFIG.kiosk.search.sortOrder}', desc: "'Ascending' or 'Descending'" },
+        sortWall: { default: '${EFFECTIVE_MENU_CONFIG.kiosk.search.sortWall}', desc: "'alternating', 'sequential', or 'sequential-wrap'" },
+        startWall: { default: '${EFFECTIVE_MENU_CONFIG.kiosk.search.startWall}', desc: "'left-screen', 'left-backwall', 'right-screen', or 'right-backwall'" },
+        repeatMode: { default: '${EFFECTIVE_MENU_CONFIG.kiosk.search.repeatMode}', desc: "'repeat' or 'norepeat'" },
+        gapPosition: { default: '${EFFECTIVE_MENU_CONFIG.kiosk.search.gapPosition}', desc: "'end', 'center', 'center-second', or 'balanced'" },
       },
  
     },
     menu: {
       controls: {
-        movementSpeedScale: { default: 4, desc: 'Integer, 1 to 10 (1 = walking simulator, 10 = Half-Life ultra fast)' },
-        autoSprint: { default: true, desc: 'true or false' },
-        jumpEnabled: { default: true, desc: 'true or false' },
-        crouchEnabled: { default: true, desc: 'true or false' },
-        crouchMode: { default: 'hold', desc: "'hold' or 'toggle'" },
-        controllerMovementEnabled: { default: true, desc: 'true or false' },
-        gamepadDeadzone: { default: 0.20, desc: 'Decimal, 0.00 to 0.50 in steps of 0.05 (e.g. 0.00, 0.05, 0.10, ... 0.50)' },
-        lookSensitivity: { default: 0.20, desc: 'Decimal, 0.05 to 1.00 in steps of 0.05 (5% to 100%)' },
-        cinemaKeyboardEnabled: { default: true, desc: 'true or false' },
-        cinemaKeyboardColor: { default: '#00ff41', desc: 'Any CSS hex color code' },
-        cinemaKeyboardPosition: { default: 'top-center', desc: "'top-left', 'top-right', 'bottom-left', 'bottom-right', 'top-center', 'center-center', or 'bottom-center'" },
-        cinemaKeyboardIdleSeconds: { default: 3.5, desc: 'Decimal seconds, in steps of 0.5 (0.5 to 10)' },
+        movementSpeedScale: { default: ${EFFECTIVE_MENU_CONFIG.menu.controls.movementSpeedScale}, desc: 'Integer, 1 to 10 (1 = walking simulator, 10 = Half-Life ultra fast)' },
+        autoSprint: { default: ${EFFECTIVE_MENU_CONFIG.menu.controls.autoSprint}, desc: 'true or false' },
+        jumpEnabled: { default: ${EFFECTIVE_MENU_CONFIG.menu.controls.jumpEnabled}, desc: 'true or false' },
+        crouchEnabled: { default: ${EFFECTIVE_MENU_CONFIG.menu.controls.crouchEnabled}, desc: 'true or false' },
+        crouchMode: { default: '${EFFECTIVE_MENU_CONFIG.menu.controls.crouchMode}', desc: "'hold' or 'toggle'" },
+        controllerMovementEnabled: { default: ${EFFECTIVE_MENU_CONFIG.menu.controls.controllerMovementEnabled}, desc: 'true or false' },
+        gamepadDeadzone: { default: ${EFFECTIVE_MENU_CONFIG.menu.controls.gamepadDeadzone}, desc: 'Decimal, 0.00 to 0.50 in steps of 0.05 (e.g. 0.00, 0.05, 0.10, ... 0.50)' },
+        lookSensitivity: { default: ${EFFECTIVE_MENU_CONFIG.menu.controls.lookSensitivity}, desc: 'Decimal, 0.05 to 1.00 in steps of 0.05 (5% to 100%)' },
+        cinemaKeyboardEnabled: { default: ${EFFECTIVE_MENU_CONFIG.menu.controls.cinemaKeyboardEnabled}, desc: 'true or false' },
+        cinemaKeyboardColor: { default: '${EFFECTIVE_MENU_CONFIG.menu.controls.cinemaKeyboardColor}', desc: 'Any CSS hex color code' },
+        cinemaKeyboardPosition: { default: '${EFFECTIVE_MENU_CONFIG.menu.controls.cinemaKeyboardPosition}', desc: "'top-left', 'top-right', 'bottom-left', 'bottom-right', 'top-center', 'center-center', or 'bottom-center'" },
+        cinemaKeyboardIdleSeconds: { default: ${EFFECTIVE_MENU_CONFIG.menu.controls.cinemaKeyboardIdleSeconds}, desc: 'Decimal seconds, in steps of 0.5 (0.5 to 10)' },
       },
       display: {
-        showCrosshair: { default: false, desc: 'true or false' },
-        showControlsUi: { default: true, desc: 'true or false' },
-        fov: { default: 65, desc: 'Integer, 60 to 120 (degrees) — camera.fov, live (camera.updateProjectionMatrix() on change, no reload needed).' },
-        audienceBrightness: { default: 0, desc: 'Integer, -10 to +10 (e.g. -10, -9, ... 0, ... 9, 10)' },
-        cinemaBrightness: { default: 0, desc: 'Integer, -10 to +10 (e.g. -10, -9, ... 0, ... 9, 10)' },
-        frontWallBrightnessOff: { default: 1.0, desc: "Decimal, 0.00 to 1.00 in steps of 0.01 — Front Wall (screen area artwork/video) brightness while the room's Dim Light is OFF." },
-        frontWallBrightnessOn: { default: 0.80, desc: "Decimal, 0.00 to 1.00 in steps of 0.01 — Front Wall (screen area artwork/video) brightness while the room's Dim Light is ON." },
-        backwallBrightnessOff: { default: 0.45, desc: "Decimal, 0.00 to 1.00 in steps of 0.01 — Backwall (fanart/video tiles) brightness while the room's Dim Light is OFF." },
-        backwallBrightnessOn: { default: 0.80, desc: "Decimal, 0.00 to 1.00 in steps of 0.01 — Backwall (fanart/video tiles) brightness while the room's Dim Light is ON." },
-        posterWallBrightnessOff: { default: 0.30, desc: "Decimal, 0.00 to 1.00 in steps of 0.01 — Poster Wall brightness while the room's Dim Light is OFF." },
-        posterWallBrightnessOn: { default: 0.65, desc: "Decimal, 0.00 to 1.00 in steps of 0.01 — Poster Wall brightness while the room's Dim Light is ON." },
-        posterLightBrightness: { default: 0.05, desc: 'Decimal, 0.00 to 1.00 in steps of 0.01 — Poster pin-light fixture and beam brightness. Fixed, does not change with Dim Light.' },
+        showCrosshair: { default: ${EFFECTIVE_MENU_CONFIG.menu.display.showCrosshair}, desc: 'true or false' },
+        showControlsUi: { default: ${EFFECTIVE_MENU_CONFIG.menu.display.showControlsUi}, desc: 'true or false' },
+        fov: { default: ${EFFECTIVE_MENU_CONFIG.menu.display.fov}, desc: 'Integer, 60 to 120 (degrees) — camera.fov, live (camera.updateProjectionMatrix() on change, no reload needed).' },
+        audienceBrightness: { default: ${EFFECTIVE_MENU_CONFIG.menu.display.audienceBrightness}, desc: 'Integer, -10 to +10 (e.g. -10, -9, ... 0, ... 9, 10)' },
+        cinemaBrightness: { default: ${EFFECTIVE_MENU_CONFIG.menu.display.cinemaBrightness}, desc: 'Integer, -10 to +10 (e.g. -10, -9, ... 0, ... 9, 10)' },
+        frontWallBrightnessOff: { default: ${EFFECTIVE_MENU_CONFIG.menu.display.frontWallBrightnessOff}, desc: "Decimal, 0.00 to 1.00 in steps of 0.01 — Front Wall (screen area artwork/video) brightness while the room's Dim Light is OFF." },
+        frontWallBrightnessOn: { default: ${EFFECTIVE_MENU_CONFIG.menu.display.frontWallBrightnessOn}, desc: "Decimal, 0.00 to 1.00 in steps of 0.01 — Front Wall (screen area artwork/video) brightness while the room's Dim Light is ON." },
+        backwallBrightnessOff: { default: ${EFFECTIVE_MENU_CONFIG.menu.display.backwallBrightnessOff}, desc: "Decimal, 0.00 to 1.00 in steps of 0.01 — Backwall (fanart/video tiles) brightness while the room's Dim Light is OFF." },
+        backwallBrightnessOn: { default: ${EFFECTIVE_MENU_CONFIG.menu.display.backwallBrightnessOn}, desc: "Decimal, 0.00 to 1.00 in steps of 0.01 — Backwall (fanart/video tiles) brightness while the room's Dim Light is ON." },
+        posterWallBrightnessOff: { default: ${EFFECTIVE_MENU_CONFIG.menu.display.posterWallBrightnessOff}, desc: "Decimal, 0.00 to 1.00 in steps of 0.01 — Poster Wall brightness while the room's Dim Light is OFF." },
+        posterWallBrightnessOn: { default: ${EFFECTIVE_MENU_CONFIG.menu.display.posterWallBrightnessOn}, desc: "Decimal, 0.00 to 1.00 in steps of 0.01 — Poster Wall brightness while the room's Dim Light is ON." },
+        posterLightBrightness: { default: ${EFFECTIVE_MENU_CONFIG.menu.display.posterLightBrightness}, desc: 'Decimal, 0.00 to 1.00 in steps of 0.01 — Poster pin-light fixture and beam brightness. Fixed, does not change with Dim Light.' },
       },
       room: {
         design: {
-          roomDesign: { default: 'velvet', desc: "'velvet', 'starship', 'neon', 'cyber', 'classic', or 'lounge' — the room's overall color/material palette (walls, floor, curtain, trim, kiosk, lighting mood). Room shape/geometry is identical across all of them; only what it's dressed in changes. Switchable live in the Options menu without a reload; not persisted across sessions — always starts at this default." },
-          roomSize: { default: '10', desc: "'10', '20', or '30' (posters per wall)" },
-          roomScaleMode: { default: 'full', desc: "'length' or 'full'" },
-          scaleMovementSpeed: { default: true, desc: 'true or false' },
-          scalePlayerPosition: { default: true, desc: "true or false — keeps the player at the same RELATIVE position in the room as it scales (Full Scale mode only); false keeps the player's world position fixed, as it was before this was introduced" },
-          showRopeBarrier: { default: true, desc: 'true or false' },
+          roomDesign: { default: '${EFFECTIVE_MENU_CONFIG.menu.room.design.roomDesign}', desc: "'velvet', 'starship', 'neon', 'cyber', 'classic', or 'lounge' — the room's overall color/material palette (walls, floor, curtain, trim, kiosk, lighting mood). Room shape/geometry is identical across all of them; only what it's dressed in changes. Switchable live in the Options menu without a reload; not persisted across sessions — always starts at this default." },
+          roomSize: { default: '${EFFECTIVE_MENU_CONFIG.menu.room.design.roomSize}', desc: "'10', '20', or '30' (posters per wall)" },
+          roomScaleMode: { default: '${EFFECTIVE_MENU_CONFIG.menu.room.design.roomScaleMode}', desc: "'length' or 'full'" },
+          scaleMovementSpeed: { default: ${EFFECTIVE_MENU_CONFIG.menu.room.design.scaleMovementSpeed}, desc: 'true or false' },
+          scalePlayerPosition: { default: ${EFFECTIVE_MENU_CONFIG.menu.room.design.scalePlayerPosition}, desc: "true or false — keeps the player at the same RELATIVE position in the room as it scales (Full Scale mode only); false keeps the player's world position fixed, as it was before this was introduced" },
+          showRopeBarrier: { default: ${EFFECTIVE_MENU_CONFIG.menu.room.design.showRopeBarrier}, desc: 'true or false' },
         },
         kiosk: {
-          kioskShowMode: { default: 'dynamic', desc: "'off' (no physical kiosk object in the room at all — K/X still opens the settings panel independently of this), 'dynamic' (rises on approach, retracts when you step away — unchanged from how the kiosk has always behaved), or 'always' (permanently fully risen, no proximity animation at all)." },
-          kioskClearlogo3d: { default: true, desc: 'true or false' },
-          kioskBrandingMode: { default: 'whenIdleOrMissing', desc: "'off', 'whenIdle', 'whenIdleOrMissing', or 'always' — controls ONLY the generic Jellyfin Cinema Project wordmark logo at the kiosk, entirely separate from kioskClearlogo3d above (which controls a MOVIE's own clearlogo). 'off': never. 'whenIdle': only while no poster action (Movie/Trailer/Theme Video/Theme Song/Fanart Wall/Ambient Mode — everything except Go to Library) is active. 'whenIdleOrMissing': same, PLUS a fallback to the Cinema logo while a poster action is active but that movie has no clearlogo of its own. 'always': the Cinema logo permanently, overriding even a movie's own clearlogo. Globally gated by kioskClearlogo3d — grayed out and inert whenever that's off." },
-          kioskLogoSpeed: { default: '3', desc: "'0' (static) through '5' (fast)" },
-          kioskLogoGlitchFreq: { default: '3', desc: "'0' (off) through '5' (constant)" },
-          kioskLogoGlitchIntensity: { default: '3', desc: "'0' (off) through '5' (severe)" },
+          kioskShowMode: { default: '${EFFECTIVE_MENU_CONFIG.menu.room.kiosk.kioskShowMode}', desc: "'off' (no physical kiosk object in the room at all — K/X still opens the settings panel independently of this), 'dynamic' (rises on approach, retracts when you step away — unchanged from how the kiosk has always behaved), or 'always' (permanently fully risen, no proximity animation at all)." },
+          kioskClearlogo3d: { default: ${EFFECTIVE_MENU_CONFIG.menu.room.kiosk.kioskClearlogo3d}, desc: 'true or false' },
+          kioskBrandingMode: { default: '${EFFECTIVE_MENU_CONFIG.menu.room.kiosk.kioskBrandingMode}', desc: "'off', 'whenIdle', 'whenIdleOrMissing', or 'always' — controls ONLY the generic Jellyfin Cinema Project wordmark logo at the kiosk, entirely separate from kioskClearlogo3d above (which controls a MOVIE's own clearlogo). 'off': never. 'whenIdle': only while no poster action (Movie/Trailer/Theme Video/Theme Song/Fanart Wall/Ambient Mode — everything except Go to Library) is active. 'whenIdleOrMissing': same, PLUS a fallback to the Cinema logo while a poster action is active but that movie has no clearlogo of its own. 'always': the Cinema logo permanently, overriding even a movie's own clearlogo. Globally gated by kioskClearlogo3d — grayed out and inert whenever that's off." },
+          kioskLogoSpeed: { default: '${EFFECTIVE_MENU_CONFIG.menu.room.kiosk.kioskLogoSpeed}', desc: "'0' (static) through '5' (fast)" },
+          kioskLogoGlitchFreq: { default: '${EFFECTIVE_MENU_CONFIG.menu.room.kiosk.kioskLogoGlitchFreq}', desc: "'0' (off) through '5' (constant)" },
+          kioskLogoGlitchIntensity: { default: '${EFFECTIVE_MENU_CONFIG.menu.room.kiosk.kioskLogoGlitchIntensity}', desc: "'0' (off) through '5' (severe)" },
         },
       },
       posters: {
@@ -2381,25 +2520,25 @@ import * as THREE from '${THREE_CDN}';
         },
       },
       backwall: {
-        backdropLayout: { default: '2x2', desc: "'off', '1x1', or '2x2'" },
-        backdropMode: { default: 'shuffle', desc: "'static' or 'shuffle'" },
-        backdropShuffleSeconds: { default: 5, desc: 'Positive integer (seconds), e.g. 5' },
-        backdropOverscanMode: { default: 'forced', desc: "'off' | 'auto' | 'forced'" },
-        backdropVideosEnabled: { default: true, desc: 'true or false' },
-        backdropBalanceVideos: { default: true, desc: 'true or false' },
-        backdropTrailerTiles: { default: '2', desc: "'0' (off) through '4'" },
-        backdropTrailerOrder: { default: 'shuffled', desc: "'first', 'all', 'random', or 'shuffled'" },
-        backdropTrailerStart: { default: 'random', desc: "'begin' or 'random'" },
-        backdropThemeVideoTiles: { default: '0', desc: "'0' (off) through '4'" },
-        backdropThemeVideoOrder: { default: 'shuffled', desc: "'first', 'all', 'random', or 'shuffled'" },
-        backdropThemeVideoStart: { default: 'random', desc: "'begin' or 'random'" },
-        backdropMovieTiles: { default: '2', desc: "'0' (off) through '4'" },
-        backdropMovieMinPct: { default: 10, desc: 'Integer, 0 to 100 (percent)' },
-        backdropMovieMaxPct: { default: 90, desc: 'Integer, 0 to 100 (percent)' },
+        backdropLayout: { default: '${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropLayout}', desc: "'off', '1x1', or '2x2'" },
+        backdropMode: { default: '${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropMode}', desc: "'static' or 'shuffle'" },
+        backdropShuffleSeconds: { default: ${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropShuffleSeconds}, desc: 'Positive integer (seconds), e.g. 5' },
+        backdropOverscanMode: { default: '${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropOverscanMode}', desc: "'off' | 'auto' | 'forced'" },
+        backdropVideosEnabled: { default: ${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropVideosEnabled}, desc: 'true or false' },
+        backdropBalanceVideos: { default: ${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropBalanceVideos}, desc: 'true or false' },
+        backdropTrailerTiles: { default: '${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropTrailerTiles}', desc: "'0' (off) through '4'" },
+        backdropTrailerOrder: { default: '${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropTrailerOrder}', desc: "'first', 'all', 'random', or 'shuffled'" },
+        backdropTrailerStart: { default: '${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropTrailerStart}', desc: "'begin' or 'random'" },
+        backdropThemeVideoTiles: { default: '${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropThemeVideoTiles}', desc: "'0' (off) through '4'" },
+        backdropThemeVideoOrder: { default: '${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropThemeVideoOrder}', desc: "'first', 'all', 'random', or 'shuffled'" },
+        backdropThemeVideoStart: { default: '${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropThemeVideoStart}', desc: "'begin' or 'random'" },
+        backdropMovieTiles: { default: '${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropMovieTiles}', desc: "'0' (off) through '4'" },
+        backdropMovieMinPct: { default: ${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropMovieMinPct}, desc: 'Integer, 0 to 100 (percent)' },
+        backdropMovieMaxPct: { default: ${EFFECTIVE_MENU_CONFIG.menu.backwall.backdropMovieMaxPct}, desc: 'Integer, 0 to 100 (percent)' },
       },
       misc: {
-        tabIcon: { default: 'cinema', desc: "'cinema' or 'vanilla'" },
-        libraryItemOpensIn: { default: 'newtab', desc: "'newtab' or 'origintab' — newtab opens the library item directly in a new browser tab; origintab navigates the original Jellyfin tab to the item, but does not switch focus to it automatically (you need to switch tabs manually)" },
+        tabIcon: { default: '${EFFECTIVE_MENU_CONFIG.menu.misc.tabIcon}', desc: "'cinema' or 'vanilla'" },
+        libraryItemOpensIn: { default: '${EFFECTIVE_MENU_CONFIG.menu.misc.libraryItemOpensIn}', desc: "'newtab' or 'origintab' — newtab opens the library item directly in a new browser tab; origintab navigates the original Jellyfin tab to the item, but does not switch focus to it automatically (you need to switch tabs manually)" },
         smartLaunch: {
           smartLaunchEnabled: { default: ${EFFECTIVE_SMART_LAUNCH.enabled}, desc: 'true or false — jump straight into the matching poster view when the Cinema button is pressed from a supported Jellyfin Web view' },
           smartLaunchSort: { default: ${EFFECTIVE_SMART_LAUNCH.sort}, desc: 'true or false — carry over the active Sort from the Jellyfin Web view, where available; otherwise falls back to the Kiosk default' },
@@ -11528,7 +11667,7 @@ import * as THREE from '${THREE_CDN}';
   (function () {
     const assign = (tab, ids) => ids.forEach((id) => { MENU_ROW_TAB[id] = tab; });
     assign('controls', ['movementSpeedSlider', 'autoSprintToggle', 'jumpEnableToggle', 'crouchEnableToggle', 'crouchModeSelect', 'controllerMovementToggle', 'controllerSelect', 'deadzoneSlider', 'sensitivitySlider', 'cinemaKeyboardEnabledToggle', 'cinemaKeyboardColorInput', 'cinemaKeyboardPositionSelect', 'cinemaKeyboardIdleInput']);
-    assign('display', ['hudToggle', 'controlsUiToggle', 'fovSlider', 'audienceBrightnessSlider', 'cinemaBrightnessSlider', 'frontWallBrightnessOffSlider', 'frontWallBrightnessOnSlider', 'backwallBrightnessOffSlider', 'backwallBrightnessOnSlider', 'posterWallBrightnessOffSlider', 'posterWallBrightnessOnSlider', 'posterLightBrightnessSlider']);
+    assign('display', ['hudToggle', 'controlsUiToggle', 'fovSlider', 'cinemaBrightnessSlider', 'audienceBrightnessSlider', 'frontWallBrightnessOffSlider', 'frontWallBrightnessOnSlider', 'backwallBrightnessOffSlider', 'backwallBrightnessOnSlider', 'posterWallBrightnessOffSlider', 'posterWallBrightnessOnSlider', 'posterLightBrightnessSlider']);
     assign('room', ['roomDesignSelect', 'roomSizeSelect', 'roomScaleModeSelect', 'scaleMovementSpeedToggle', 'scalePlayerPositionToggle', 'ropeBarrierToggle', 'kioskShowModeSelect', 'kioskLogoToggle', 'kioskBrandingModeSelect', 'kioskLogoSpeedSlider', 'kioskLogoGlitchFreqSlider', 'kioskLogoGlitchIntensitySlider']);
     assign('posters', ['msPosterMenuTabs', 'hideUnavailableToggle', 'msEnvMovie', 'volMovieSlider', 'loopMovieToggle', 'afterMovieThemeSongToggle', 'afterMovieScreenArtToggle', 'msEnvTrailer', 'volTrailerSlider', 'trailerPlaybackOrderSelect', 'loopTrailerToggle', 'afterTrailerThemeSongToggle', 'afterTrailerScreenArtToggle', 'replaceAudioTrailerToggle', 'trailerReplaceAudioOrderSelect', 'trailerReplaceAudioStartPositionSelect', 'trailerReplaceAudioStartMinInput', 'trailerReplaceAudioStartMaxInput', 'noThemeSongFallbackTrailerSelect', 'msEnvThemeVideo', 'volThemeVideoSlider', 'themeVideoPlaybackOrderSelect', 'loopThemeVideoToggle', 'afterThemeVideoThemeSongToggle', 'afterThemeVideoScreenArtToggle', 'replaceAudioThemeVideoToggle', 'themeVideoReplaceAudioOrderSelect', 'themeVideoReplaceAudioStartPositionSelect', 'themeVideoReplaceAudioStartMinInput', 'themeVideoReplaceAudioStartMaxInput', 'noThemeSongFallbackThemeVideoSelect', 'msEnvThemeSong', 'volThemeSongSlider', 'loopThemeSongToggle', 'themeSongPlaybackOrderSelect', 'themeSongStartPositionSelect', 'themeSongStartMinInput', 'themeSongStartMaxInput', 'themeSongDelayedStartInput', 'themeSongDelayedStartFirstOnlyToggle', 'themeSongFadeInInput', 'themeSongFadeOutInput', 'themeSongFadeFirstOnlyToggle', 'msEnvFanartWall', 'ambientProfileSelect', 'ambientProfileLoopToggle', 'ambientSequenceCountSelect', 'ambientSequence1EffectSelect', 'ambientSequence1DurationTypeSelect', 'ambientSequence1DurationValueInput', 'ambientSequence1VolumeSlider', 'ambientSequence1LoopToggle', 'ambientSequence1PlaybackOrderSelect', 'ambientSequence1MovieStartModeSelect', 'ambientSequence1MovieStartMinInput', 'ambientSequence1MovieStartMaxInput', 'ambientSequence1ThemeSongStartPositionSelect', 'ambientSequence1ThemeSongStartMinInput', 'ambientSequence1ThemeSongStartMaxInput', 'ambientSequence1ThemeSongDelayedStartInput', 'ambientSequence1ThemeSongDelayedStartFirstOnlyToggle', 'ambientSequence1ThemeSongFadeInInput', 'ambientSequence1ThemeSongFadeOutInput', 'ambientSequence1ThemeSongFadeFirstOnlyToggle', 'ambientSequence1ThemeSongEarlyEndInput', 'ambientSequence1ReplaceAudioToggle', 'ambientSequence1ReplaceAudioOrderSelect', 'ambientSequence1EnvSelect', 'ambientSequence1FallbackSelect', 'ambientSequence1FrontArtEarlyFadeInput', 'ambientSequence2EffectSelect', 'ambientSequence2DurationTypeSelect', 'ambientSequence2DurationValueInput', 'ambientSequence2VolumeSlider', 'ambientSequence2LoopToggle', 'ambientSequence2PlaybackOrderSelect', 'ambientSequence2MovieStartModeSelect', 'ambientSequence2MovieStartMinInput', 'ambientSequence2MovieStartMaxInput', 'ambientSequence2ThemeSongStartPositionSelect', 'ambientSequence2ThemeSongStartMinInput', 'ambientSequence2ThemeSongStartMaxInput', 'ambientSequence2ThemeSongDelayedStartInput', 'ambientSequence2ThemeSongDelayedStartFirstOnlyToggle', 'ambientSequence2ThemeSongFadeInInput', 'ambientSequence2ThemeSongFadeOutInput', 'ambientSequence2ThemeSongFadeFirstOnlyToggle', 'ambientSequence2ThemeSongEarlyEndInput', 'ambientSequence2ReplaceAudioToggle', 'ambientSequence2ReplaceAudioOrderSelect', 'ambientSequence2EnvSelect', 'ambientSequence2FallbackSelect', 'ambientSequence2FrontArtEarlyFadeInput', 'ambientSequence3EffectSelect', 'ambientSequence3DurationTypeSelect', 'ambientSequence3DurationValueInput', 'ambientSequence3VolumeSlider', 'ambientSequence3LoopToggle', 'ambientSequence3PlaybackOrderSelect', 'ambientSequence3MovieStartModeSelect', 'ambientSequence3MovieStartMinInput', 'ambientSequence3MovieStartMaxInput', 'ambientSequence3ThemeSongStartPositionSelect', 'ambientSequence3ThemeSongStartMinInput', 'ambientSequence3ThemeSongStartMaxInput', 'ambientSequence3ThemeSongDelayedStartInput', 'ambientSequence3ThemeSongDelayedStartFirstOnlyToggle', 'ambientSequence3ThemeSongFadeInInput', 'ambientSequence3ThemeSongFadeOutInput', 'ambientSequence3ThemeSongFadeFirstOnlyToggle', 'ambientSequence3ThemeSongEarlyEndInput', 'ambientSequence3ReplaceAudioToggle', 'ambientSequence3ReplaceAudioOrderSelect', 'ambientSequence3EnvSelect', 'ambientSequence3FallbackSelect', 'ambientSequence3FrontArtEarlyFadeInput', 'ambientSequence4EffectSelect', 'ambientSequence4DurationTypeSelect', 'ambientSequence4DurationValueInput', 'ambientSequence4VolumeSlider', 'ambientSequence4LoopToggle', 'ambientSequence4PlaybackOrderSelect', 'ambientSequence4MovieStartModeSelect', 'ambientSequence4MovieStartMinInput', 'ambientSequence4MovieStartMaxInput', 'ambientSequence4ThemeSongStartPositionSelect', 'ambientSequence4ThemeSongStartMinInput', 'ambientSequence4ThemeSongStartMaxInput', 'ambientSequence4ThemeSongDelayedStartInput', 'ambientSequence4ThemeSongDelayedStartFirstOnlyToggle', 'ambientSequence4ThemeSongFadeInInput', 'ambientSequence4ThemeSongFadeOutInput', 'ambientSequence4ThemeSongFadeFirstOnlyToggle', 'ambientSequence4ThemeSongEarlyEndInput', 'ambientSequence4ReplaceAudioToggle', 'ambientSequence4ReplaceAudioOrderSelect', 'ambientSequence4EnvSelect', 'ambientSequence4FallbackSelect', 'ambientSequence4FrontArtEarlyFadeInput', 'ambientSequence5EffectSelect', 'ambientSequence5DurationTypeSelect', 'ambientSequence5DurationValueInput', 'ambientSequence5VolumeSlider', 'ambientSequence5LoopToggle', 'ambientSequence5PlaybackOrderSelect', 'ambientSequence5MovieStartModeSelect', 'ambientSequence5MovieStartMinInput', 'ambientSequence5MovieStartMaxInput', 'ambientSequence5ThemeSongStartPositionSelect', 'ambientSequence5ThemeSongStartMinInput', 'ambientSequence5ThemeSongStartMaxInput', 'ambientSequence5ThemeSongDelayedStartInput', 'ambientSequence5ThemeSongDelayedStartFirstOnlyToggle', 'ambientSequence5ThemeSongFadeInInput', 'ambientSequence5ThemeSongFadeOutInput', 'ambientSequence5ThemeSongFadeFirstOnlyToggle', 'ambientSequence5ThemeSongEarlyEndInput', 'ambientSequence5ReplaceAudioToggle', 'ambientSequence5ReplaceAudioOrderSelect', 'ambientSequence5EnvSelect', 'ambientSequence5FallbackSelect', 'ambientSequence5FrontArtEarlyFadeInput', 'ambientSequence6EffectSelect', 'ambientSequence6DurationTypeSelect', 'ambientSequence6DurationValueInput', 'ambientSequence6VolumeSlider', 'ambientSequence6LoopToggle', 'ambientSequence6PlaybackOrderSelect', 'ambientSequence6MovieStartModeSelect', 'ambientSequence6MovieStartMinInput', 'ambientSequence6MovieStartMaxInput', 'ambientSequence6ThemeSongStartPositionSelect', 'ambientSequence6ThemeSongStartMinInput', 'ambientSequence6ThemeSongStartMaxInput', 'ambientSequence6ThemeSongDelayedStartInput', 'ambientSequence6ThemeSongDelayedStartFirstOnlyToggle', 'ambientSequence6ThemeSongFadeInInput', 'ambientSequence6ThemeSongFadeOutInput', 'ambientSequence6ThemeSongFadeFirstOnlyToggle', 'ambientSequence6ThemeSongEarlyEndInput', 'ambientSequence6ReplaceAudioToggle', 'ambientSequence6ReplaceAudioOrderSelect', 'ambientSequence6EnvSelect', 'ambientSequence6FallbackSelect', 'ambientSequence6FrontArtEarlyFadeInput', 'ambientSequence7EffectSelect', 'ambientSequence7DurationTypeSelect', 'ambientSequence7DurationValueInput', 'ambientSequence7VolumeSlider', 'ambientSequence7LoopToggle', 'ambientSequence7PlaybackOrderSelect', 'ambientSequence7MovieStartModeSelect', 'ambientSequence7MovieStartMinInput', 'ambientSequence7MovieStartMaxInput', 'ambientSequence7ThemeSongStartPositionSelect', 'ambientSequence7ThemeSongStartMinInput', 'ambientSequence7ThemeSongStartMaxInput', 'ambientSequence7ThemeSongDelayedStartInput', 'ambientSequence7ThemeSongDelayedStartFirstOnlyToggle', 'ambientSequence7ThemeSongFadeInInput', 'ambientSequence7ThemeSongFadeOutInput', 'ambientSequence7ThemeSongFadeFirstOnlyToggle', 'ambientSequence7ThemeSongEarlyEndInput', 'ambientSequence7ReplaceAudioToggle', 'ambientSequence7ReplaceAudioOrderSelect', 'ambientSequence7EnvSelect', 'ambientSequence7FallbackSelect', 'ambientSequence7FrontArtEarlyFadeInput', 'ambientSequence8EffectSelect', 'ambientSequence8DurationTypeSelect', 'ambientSequence8DurationValueInput', 'ambientSequence8VolumeSlider', 'ambientSequence8LoopToggle', 'ambientSequence8PlaybackOrderSelect', 'ambientSequence8MovieStartModeSelect', 'ambientSequence8MovieStartMinInput', 'ambientSequence8MovieStartMaxInput', 'ambientSequence8ThemeSongStartPositionSelect', 'ambientSequence8ThemeSongStartMinInput', 'ambientSequence8ThemeSongStartMaxInput', 'ambientSequence8ThemeSongDelayedStartInput', 'ambientSequence8ThemeSongDelayedStartFirstOnlyToggle', 'ambientSequence8ThemeSongFadeInInput', 'ambientSequence8ThemeSongFadeOutInput', 'ambientSequence8ThemeSongFadeFirstOnlyToggle', 'ambientSequence8ThemeSongEarlyEndInput', 'ambientSequence8ReplaceAudioToggle', 'ambientSequence8ReplaceAudioOrderSelect', 'ambientSequence8EnvSelect', 'ambientSequence8FallbackSelect', 'ambientSequence8FrontArtEarlyFadeInput', 'ambientSequence9EffectSelect', 'ambientSequence9DurationTypeSelect', 'ambientSequence9DurationValueInput', 'ambientSequence9VolumeSlider', 'ambientSequence9LoopToggle', 'ambientSequence9PlaybackOrderSelect', 'ambientSequence9MovieStartModeSelect', 'ambientSequence9MovieStartMinInput', 'ambientSequence9MovieStartMaxInput', 'ambientSequence9ThemeSongStartPositionSelect', 'ambientSequence9ThemeSongStartMinInput', 'ambientSequence9ThemeSongStartMaxInput', 'ambientSequence9ThemeSongDelayedStartInput', 'ambientSequence9ThemeSongDelayedStartFirstOnlyToggle', 'ambientSequence9ThemeSongFadeInInput', 'ambientSequence9ThemeSongFadeOutInput', 'ambientSequence9ThemeSongFadeFirstOnlyToggle', 'ambientSequence9ThemeSongEarlyEndInput', 'ambientSequence9ReplaceAudioToggle', 'ambientSequence9ReplaceAudioOrderSelect', 'ambientSequence9EnvSelect', 'ambientSequence9FallbackSelect', 'ambientSequence9FrontArtEarlyFadeInput', 'ambientSequence10EffectSelect', 'ambientSequence10DurationTypeSelect', 'ambientSequence10DurationValueInput', 'ambientSequence10VolumeSlider', 'ambientSequence10LoopToggle', 'ambientSequence10PlaybackOrderSelect', 'ambientSequence10MovieStartModeSelect', 'ambientSequence10MovieStartMinInput', 'ambientSequence10MovieStartMaxInput', 'ambientSequence10ThemeSongStartPositionSelect', 'ambientSequence10ThemeSongStartMinInput', 'ambientSequence10ThemeSongStartMaxInput', 'ambientSequence10ThemeSongDelayedStartInput', 'ambientSequence10ThemeSongDelayedStartFirstOnlyToggle', 'ambientSequence10ThemeSongFadeInInput', 'ambientSequence10ThemeSongFadeOutInput', 'ambientSequence10ThemeSongFadeFirstOnlyToggle', 'ambientSequence10ThemeSongEarlyEndInput', 'ambientSequence10ReplaceAudioToggle', 'ambientSequence10ReplaceAudioOrderSelect', 'ambientSequence10EnvSelect', 'ambientSequence10FallbackSelect', 'ambientSequence10FrontArtEarlyFadeInput']);
     assign('backwall', ['backdropLayoutSelect', 'backdropModeSelect', 'backdropSecondsInput', 'backdropVideosEnabledToggle', 'backdropBalanceToggle', 'backdropOverscanModeSelect', 'backdropTrailerTilesSelect', 'backdropTrailerOrderSelect', 'backdropTrailerStartSelect', 'backdropThemeVideoTilesSelect', 'backdropThemeVideoOrderSelect', 'backdropThemeVideoStartSelect', 'backdropMovieTilesSelect', 'backdropMovieMinInput', 'backdropMovieMaxInput']);
