@@ -1,4 +1,4 @@
-<img src="thumb.png" width="700">
+<img src="thumb.png" width="100%">
 
 *Not affiliated with or endorsed by Jellyfin.*
 
@@ -84,6 +84,8 @@ A tip for `backdrop1-X.jpg`: avoid using the same or near-identical images multi
 
 There are two ways to install Cinema Project, and both end up running the exact same script with the exact same feature set. You only need one of them.
 
+One more thing worth knowing either way: Cinema opens in its own new browser tab, built as a Blob URL. **That's genuinely tied to the tab that created it, you have to keep the original Jellyfin Web tab open in the background.** Closing it will end the Cinema tab along with it, since the browser ties a Blob URL's lifetime to the document that generated it in the first place.
+
 ### Option A - Plugin (recommended)
 
 1. In Jellyfin, go to **Dashboard → Plugins → Repositories → Add Repository** and add:
@@ -106,7 +108,7 @@ The plugin hooks itself into the Jellyfin Web interface automatically, so no sep
 2. Add the contents of [`Jellyfin-Cinema-Project.js`](Jellyfin-Cinema-Project.js) as a new script entry.
 3. Save and reload Jellyfin Web. The Cinema button appears in the header.
 
-Keep in mind: with this variant, the in-room Options menu still lets you change anything you like, but none of it is saved beyond your current session, it resets the moment you close the tab. If you want changes to actually stick, the only way here is editing the defaults directly inside the `.js` file itself. See [Configuration & Options](#configuration--options) for the full picture.
+Keep in mind: with this variant, the in-room Options menu still lets you change anything you like, but **none of it is saved beyond your current session, it resets the moment you close the tab**. If you want changes to actually stick, the only way here is editing the defaults directly inside the `.js` file itself. See [Configuration & Options](#configuration--options) for the full picture.
 
 ---
 
