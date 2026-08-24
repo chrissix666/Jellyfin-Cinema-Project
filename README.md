@@ -1,3 +1,5 @@
+<img src="thumb.png" width="700">
+
 *Not affiliated with or endorsed by Jellyfin.*
 
 ---
