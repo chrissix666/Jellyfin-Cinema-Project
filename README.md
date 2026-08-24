@@ -98,6 +98,7 @@ One more thing worth knowing either way: Cinema opens in its own new browser tab
 **Where the Cinema button shows up in the Jellyfin Web header**
 
 <img src="screenshots/cinema-button-location.png" width="700" alt="Where the Cinema button shows up in the Jellyfin Web header">
+
 4. Don't miss the plugin's own settings page under **Dashboard → My Plugins → Cinema Project**. This is easy to overlook, but it's worth finding: settings changed here are saved permanently and apply server-wide for everyone, unlike the in-room Options menu (`M` key), which only affects your current browser session and resets the moment you close the tab. See [Configuration & Options](#configuration--options) for the full picture.
 
 The plugin hooks itself into the Jellyfin Web interface automatically, so no separate injector step is needed. The script itself is delivered via jsDelivr.
