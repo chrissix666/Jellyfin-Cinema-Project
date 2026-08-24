@@ -8845,7 +8845,6 @@ import * as THREE from '${THREE_CDN}';
   let contextMenuFlashUntil = 0;
   let contextMenuFlashIndex = -1;
   let contextMenuFlashColor = 'red'; // currently the only flash color in use — see updateContextMenuFocusVisual's own comment for why a second (green) one didn't stick around
-  const POSTER_BASE_EMISSIVE = 0.35;
   function makeCtxButtonTexture(text, focused, disabled, flashColor) {
     const canvas = document.createElement('canvas');
     canvas.width = 512; canvas.height = 114;
@@ -15326,7 +15325,23 @@ import * as THREE from '${THREE_CDN}';
       // Nur Poster MIT bereits geladener Textur bekommen den dynamischen
       // Grauton -- ohne diese Pruefung wurde auch der dunkle Platzhalter
       // (vor dem Laden) faelschlich grau statt schwarz eingefaerbt.
-      if (p.material && p.material.color && p.material.map) p.material.color.setScalar(posterWallBrightness);
+      if (p.material && p.material.color && p.material.map) {
+        // Same MeshBasicMaterial.color-multiplies-the-texture mechanism
+        // as posterWallBrightness itself, just with an extra per-poster
+        // dim factor layered on top for whichever single poster currently
+        // has its own context menu open -- restores the "background
+        // poster dims behind the menu" effect that a previous iteration
+        // lost when poster materials moved from MeshStandardMaterial to
+        // MeshBasicMaterial (which has no emissive/emissiveIntensity of
+        // its own; a leftover POSTER_BASE_EMISSIVE-based attempt further
+        // down silently did nothing on this material type). Driven by
+        // contextMenuAnimT, the menu's own already-smooth 0..1 open/close
+        // animation, rather than a separate fade of its own, so this
+        // exactly tracks the menu's own animation instead of needing to
+        // be kept in sync with it by hand.
+        const menuDimFactor = (p === contextMenuPosterMesh) ? THREE.MathUtils.lerp(1, 0.15, contextMenuAnimT) : 1;
+        p.material.color.setScalar(posterWallBrightness * menuDimFactor);
+      }
     });
     // Hides the shimmer outright while genuine disc art is showing (NOT
     // the dark fallback circle — that one already correctly leaves the
@@ -15349,10 +15364,6 @@ import * as THREE from '${THREE_CDN}';
     if (contextMenuGroup) {
       contextMenuGroup.scale.setScalar(Math.max(0.001, contextMenuAnimT));
       contextMenuButtons.forEach((mesh) => { mesh.material.opacity = contextMenuAnimT; });
-    }
-    if (contextMenuPosterMesh && contextMenuPosterMesh.material) {
-      const dimTarget = contextMenuOpen ? POSTER_BASE_EMISSIVE * 0.15 : POSTER_BASE_EMISSIVE;
-      contextMenuPosterMesh.material.emissiveIntensity = THREE.MathUtils.lerp(contextMenuPosterMesh.material.emissiveIntensity, dimTarget, Math.min(1, dt * 8));
     }
     if (kioskGroup) {
       // 'off': target is always 0, never rises (see kioskShowMode's own
