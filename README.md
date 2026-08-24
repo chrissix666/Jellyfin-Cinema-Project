@@ -74,6 +74,7 @@ A tip for `backdrop1-X.jpg`: avoid using the same or near-identical images multi
 - **Trailers**: both conventions are supported, a `-trailer.ext` file next to the movie, and a `trailers` subfolder. Cinema Project picks up everything it finds either way.
 - **Theme music**: both conventions are supported, a `theme.mp3` file directly, and a `theme-music` subfolder. Again, everything it finds gets picked up.
 - **Theme videos**: only the `backdrops` subfolder convention is supported.
+- **Subtitles**: not supported. Movies play back without any subtitle track, selectable or otherwise.
 
 ---
 
@@ -107,9 +108,9 @@ Keep in mind: with this variant, the in-room Options menu still lets you change 
 
 The Cinema room is made up of a few different elements, each with its own job.
 
-**The Kiosk** is the room's input element. Walk up to it and it rises out of the floor. This is where you search, filter, and sort, by movies, favorites, collections, genres, tags, studios, or people. The physical kiosk itself is really just theater, though, not a requirement: the search panel opens from its own keyboard/controller shortcut regardless of whether you've walked up to anything, so how the kiosk actually appears in the room is entirely optional. By default it dynamically rises when you approach and retracts when you step away, but it can also be set to stay permanently risen, or turned off entirely so no physical object exists in the room at all, without the shortcut losing any of its function either way. It also carries its own bit of showmanship: it can display a 3D clearlogo of whichever movie's poster effect is currently active, with adjustable floating speed and an optional glitch effect (frequency and intensity both tunable), and falls back to Cinema Project's own wordmark logo when a movie has no clearlogo of its own, or permanently, depending on how it's set.
+**The Kiosk** is the room's input element. Walk up to it and it rises out of the floor. This is where you search, filter, and sort, by movies, favorites, collections, genres, tags, studios, or people. The physical kiosk itself is really just theater, though, not a requirement: the search panel opens from its own keyboard/controller shortcut regardless of whether you've walked up to anything, so how the kiosk actually appears in the room is entirely optional. By default it dynamically rises when you approach and retracts when you step away, but it can also be set to stay permanently risen, or turned off entirely so no physical object exists in the room at all, without the shortcut losing any of its function either way. It also carries its own bit of showmanship: it can display a 3D clearlogo of whichever movie's poster effect is currently active, with adjustable floating speed and an optional glitch effect (frequency and intensity both tunable). When a movie has no clearlogo of its own, it falls back to Cinema Project's own wordmark logo instead, or that wordmark can be shown permanently regardless, depending on how it's set.
 
-**The Front Wall**, the screen up front, is output too: whenever a video is actually playing, movie, trailer, or theme video, that's what shows here. The rest of the time, whenever a poster effect that isn't a video is active (Theme Song or Fanart Wall) and Screen Art is enabled for it, it falls back to a still image instead: the movie's own landscape artwork where available, or its fanart with the clearlogo layered on top if not, or its poster as a last resort.
+**The Front Wall**, the screen up front, is output too, and doubles as two different things depending on what's active: a video wall for the video poster effects (Movie, Trailer, Theme Video), showing exactly that, or an art wall for the non-video ones (Theme Song, Fanart Wall), optionally showing a still image instead when Screen Art is enabled for it: the movie's own landscape artwork where available, or its fanart with the clearlogo layered on top if not, or its poster as a last resort. See [Screen Art](#environment-effects) below for the full picture.
 
 **The Side Walls (the posters)** are both input and output, and where the actual interaction with Cinema Project happens. The Kiosk only sorts, filters, and searches; it's the posters themselves that trigger anything. They show the artwork itself, but you can also interact with them directly: walk up, interact, and a menu opens with a set of poster effects to choose from. See [poster effects](#poster-effects) below. The whole library can also be paged through as a wall at a time, rather than one poster at a row.
 
@@ -134,14 +135,16 @@ Which of these appear in the menu at all is itself configurable (see [Configurat
 Movie, Trailer, Theme Video, Theme Song, and Fanart Wall each also trigger their own combination of environment effects: what the rest of the room does while that poster effect plays. The available environment effects are:
 
 - **Backwall Art**: the fanart/video slideshow across the backwall
-- **Screen Art**: whatever's playing on the screen up front
-- **Disc Art**: the rotating disc, synced to playback
-- **Poster Light**: a soft light on the poster itself
+- **Screen Art**: the Front Wall, doubling as a video wall for video poster effects (Movie, Trailer, Theme Video) and as an art wall for the non-video ones (Fanart Wall, Theme Song), showing that movie's landscape artwork, or its fanart with the clearlogo layered on top as a fallback, when there's no video to actually show
+- **Disc Art**: a rotating disc on the floor around the kiosk, in the exact same spot where the kiosk's own spotlight normally projects down when the room is lit
+- **Poster Light**: whichever poster currently has a poster effect playing always keeps its own light lit, working as a visual indicator regardless of anything else. What this toggle actually controls is every other poster's light in contrast: on, everyone stays lit normally; off, every other poster goes dark, turning the active one into a genuine spotlight
 - **Dim Room**: dims the rest of the room's lighting
 
 Each of the five poster effects above has its own configurable set of environment effects. Playing a Theme Song, for example, doesn't need Screen Art active the same way playing the Movie itself does, so each combination can be tuned independently. Fanart Wall is really just this layer by itself: it's what any of the other four poster effects look like with the audio or video stripped out, the environment effects running standalone instead of alongside something else.
 
-Movie, Trailer, Theme Video, and Theme Song also each have their own volume and loop setting. With looping off, Movie, Trailer, and Theme Video can each be told what to do once they finish, rather than just falling silent: automatically continue into the Theme Song, show the Front Screen Art, both, or neither. And if audio replacement (Movie's theme song swapped in over a trailer or theme video) is turned on for a movie with no theme song of its own, there's a choice of keeping the original audio instead or muting it entirely.
+Movie, Trailer, Theme Video, and Theme Song also each have their own volume and loop setting. Trailer, Theme Video, and Theme Song additionally each have their own Playback Order for movies that have more than one to choose from: always the first one found, cycling through all of them in order, one random pick, or all of them shuffled. Theme Song goes further still, with its own full timing suite: where in the song playback starts (the beginning, or a random point within a configurable range), a delayed start, an early end, and a fade in/out, each measured in seconds. When Playback Order is set to cycle through more than one song, the delayed start and the fade in/out pair can each be set to apply only to the very first song of a session or to every song the queue advances to.
+
+With looping off, Movie, Trailer, and Theme Video can each be told what to do once they finish, rather than just falling silent: automatically continue into the Theme Song, show the Front Screen Art, both, or neither. Trailer and Theme Video can also each have their own audio replaced with the movie's theme song instead of their original sound, with its own playback order and start position settings, separate from the Theme Song poster effect's own; and if a movie has no theme song of its own to swap in, there's a choice of keeping the original audio instead or muting it entirely.
 
 **Ambient Mode** ties both of these together: every step in an Ambient Mode sequence is one poster effect (Movie, Trailer, Theme Video, Theme Song, or Fanart Wall) paired with its own custom combination of environment effects, rather than reusing that poster effect's usual default. This is what lets a sequence, for example, play a theme song with the backwall dimmed on one step and lit up with Poster Light on the next.
 
@@ -206,11 +209,11 @@ On top of that, each step has its own detailed timing and playback controls:
 - **Duration**: how long the step runs before moving on, and whether it loops within itself while it does
 - **Volume**: the step's own audio level
 - **Movie/trailer start position**: whether playback starts from the beginning or a random point (with a configurable min/max range for how random)
-- **Theme song timing**: independent controls for a delayed start, an early end, fade-in, and fade-out, each of which can optionally apply only the first time the step plays rather than every time, plus its own start-position and randomized-range settings, same as movie/trailer above
+- **Theme song timing**: independent controls for a delayed start, an early end, and a fade in/out, each of which can optionally apply only the first time the step plays rather than every time, plus its own start-position and randomized-range settings, same as movie/trailer above
 - **Audio replacement**: the same trailer/theme-video audio-replace option available elsewhere, settable per step
 - **Fallback behavior**: what happens if this step's own choice of content isn't actually available for whatever gets picked
 
-This much control means a profile can, for example, open on a slow fanart wall with the room dimmed, ease into theme songs with a fade-in and delayed start, and only bring the screen and full lighting in for a specific step, all without touching any other step's own settings.
+This much control means a profile can, for example, open on a slow fanart wall with the room dimmed, ease into theme songs with a fade in and a delayed start, and only bring the screen and full lighting in for a specific step, all without touching any other step's own settings.
 
 ---
 
@@ -220,13 +223,21 @@ Interaction has a typed layer too: press Enter whenever no menu is open and noth
 
 ### Typing a title
 
-Typing a movie title on its own plays that movie, and `play`/`start` in front of it work as an explicit, optional prefix if you'd rather type it that way. Title matching ignores case and accents, and is deliberately lazy about how it narrows things down:
+Typing a movie title on its own plays that movie. A title can also be combined in the same command with a chapter or a percent mark to start at: `gladiator 65%`, `gladiator chapter 5`, `gladiator chapter <any chapter name>` (matched case-insensitively against that movie's own actual chapter names in Jellyfin, not a fixed keyword, just whatever text is really in there), or a random one of either, `gladiator random%`, `gladiator chapter random`, jumping straight to that point the moment it starts playing, rather than needing a second command once it's already on screen. See [Play commands](#play-commands) below for how `play`, `start`, `resume`, and `replay` fit into all this, and [Random](#random) further down for everything else `random` can do. Title matching itself ignores case and accents, and is deliberately lazy about how it narrows things down:
 
 1. First, it tries an exact match, treating `:` and ` - ` (or an em dash) as a soft break and stripping out anything in parentheses.
 2. If that doesn't land on exactly one movie, it tries again without a trailing bracketed group.
 3. If that still doesn't land on exactly one movie, it tries once more without everything after the first `:`/` - ` break, i.e. the movie's subtitle.
 
 It stops as soon as any of these three stages narrows things down to a single, unambiguous match, and gives up rather than guessing if a stage still returns more than one.
+
+### Play commands
+
+`play`, `start`, `resume`, and `replay` each mean something slightly different, and every one of them works two ways: right after a title (`gladiator resume`), or bare with no title at all, acting on whatever movie is already playing:
+
+- **`play`/`start`**: entirely optional. A bare title on its own already means "play it from the beginning", so these two are purely there if you'd rather type them explicitly
+- **`resume`**: continues from Jellyfin's own saved playback position for that movie, if it has one, whether typed after a title or bare on whatever's currently playing
+- **`replay`**: explicitly restarts from the true beginning, overriding any resume, chapter, or percent position it might already be sitting at
 
 ### Effect words
 
@@ -244,20 +255,82 @@ Adding an effect word after the title picks what plays instead of the movie itse
 
 ### Bare commands
 
-A handful of commands need no title at all, and act directly on whatever's currently playing:
+A couple of positional commands need no title at all, and act on a movie that's already playing (this doesn't apply to trailer/theme video/theme song). Both also combine with a title instead, see [Typing a title](#typing-a-title) above:
 
-- `resume`, `replay`
-- `chapter 5`, `chapter random` (or `random chapter`)
-- `65%`, `65 percent`, `random%`, `random percent`
-- `random effect`, `random poster effect`, `random play effect`, `play random effect`
+- `chapter 5`, or `chapter <any chapter name>` (whatever that movie's own chapters are actually called in Jellyfin, matched case-insensitively, not a fixed keyword)
+- `65%`, `65 percent`
+
+### System & navigation commands
+
+These work standalone too, and aren't tied to anything currently playing:
+
+- **Poster page, single jumps**: `next page`/`page next`/`forward page`/`page forward`/`next`/`forward` (one page forward) · `previous page`/`prev page`/`page previous`/`page prev`/`back page`/`page back`/`previous`/`prev` (one page back)
+- **Poster page, multiple jumps**: any count works in either word order, with or without "page(s)": `3 next`, `next 3`, `3 page next`, `next 3 pages`, all jump three pages forward in one go
+- **Poster page, start/end jumps**: `page last`/`last page`/`last`/`end` (jump straight to the last page) · `page first`/`first page`/`first`/`begin` (jump straight to the first page)
+- **Room size**: `enlarge`/`increase` (grow one step) · `reduce`/`decrease`/`shrink` (shrink one step)
+- **Panels & UI**: `kiosk` (opens the Kiosk panel) · `options` (toggles the Options menu) · `controls` (toggles the controls overlay) · `stop` (stops Ambient Mode and any playback)
+- **Fullscreen**: `fullscreen` (enter) · `window`/`windowed` (exit)
+- **Lighting**: `on`/`light`/`light on`/`lights on`/`bright`/`brighten`/`illuminate` (lights up) · `off`/`dark`/`darken`/`light off`/`dim` (lights down)
+- **Audio**: `mute`/`sound off` · `unmute`/`sound on`
+- **Home**: resets the Kiosk panel and every wall setting (Sort By, Sort Order, Sort Wall, Start Wall, Repeat Mode, Gap Position) back to their defaults in one go
+
+### Reset
+
+`reset` is its own, more targeted counterpart to `home`, undoing filters specifically rather than wall settings:
+
+- **Bare `reset`**: clears every active filter at once (genre, year, tag, rating, feature, general filter, video type, studio, person), leaving sort and wall layout exactly as they were
+- **`reset <category>`** (for example `reset genre`): clears just that one category, leaving every other active filter untouched
+- **`reset <category> <value>`** (for example `reset genre action`): removes only that specific value from the category, rather than clearing the whole thing
+- Several categories or values can be combined in one command, and the words `filter`/`filters` right after `reset` are accepted but optional, they don't change anything
 
 ### Filters and sorts
 
-Filters (genre, year, tag, rating, feature, general filter, video type, studio, person, collection) and sorts (Sort By, Sort Order, Sort Wall, Start Wall, Repeat Mode, Gap Position) can both be typed straight into the console, and several can be combined within one command, `genre action tag christmas` sets both at once. The category words themselves are forgiving too: `studio` and `network` mean the same thing, as do `person`, `actor`, `actress`, and `celeb`, and `collection` is recognized in close to twenty languages, not just English.
+Filters (genre, year, tag, rating, feature, general filter, video type, studio, person, collection) and sorts (Sort By, Sort Order, Sort Wall, Start Wall, Repeat Mode, Gap Position) can both be typed straight into the console. Neither one needs an umbrella word in front to work: you just type the category directly (`genre action`, not `filter genre action`), and the same goes for sorting, `sort` and `wall` can optionally be typed right before a sort or wall value if you'd rather read it that way, but they're pure filler and change nothing either way, `sort name` and plain `name` do the exact same thing.
 
-The two behave differently across separate commands, though. Filters are not additive: typing a filter command replaces whatever filters were active before, rather than adding to them. Sorts are additive: a command that only sets a Sort By, for instance, leaves whatever's currently active for Sort Order, Sort Wall, and the rest untouched.
+The category words themselves are forgiving too: `studio` and `network` mean the same thing, as do `person`, `actor`, `actress`, and `celeb`, and `collection` is recognized in close to twenty languages, not just English.
 
-Bare `random` is the one deliberate exception to that: typed alone, it resets to the whole library and picks something random, dropping any filters that were active before, the same non-additive rule filters themselves follow. Typed together with filters in the same command, it picks randomly from within them instead (`random genre action` picks randomly from Action movies, not the whole library). To make `random` behave as a normal, additive sort field instead, combinable like any other, type `sort random` explicitly; the word `sort` immediately before it is what changes its meaning.
+| Sort By | Aliases |
+|---|---|
+| SortName | `name` |
+| CommunityRating | `community rating` |
+| CriticRating | `critics rating`, `critic rating` |
+| DateCreated | `date added` |
+| DatePlayed | `date played` |
+| OfficialRating | `parental rating` |
+| PlayCount | `play count` |
+| PremiereDate | `release date` |
+| Runtime | `runtime` |
+| Random | `random` (bare) or `sort random` (see [Random](#random) below) |
+
+| Wall setting | Values / aliases |
+|---|---|
+| Sort Wall | `alternating`/`alternate`, `sequential`/`sequence`, `wrap`/`wraparound`/`sequential wrap` |
+| Start Wall | `left screen`, `left backwall`/`left back`, `right screen`, `right backwall`/`right back` |
+| Repeat Mode | `repeat`/`loop`, `no repeat`/`norepeat`/`once` |
+| Gap Position | `end`/`gap end`, `center`/`centered`/`middle`, `second center`/`center second`, `balanced`/`spread`/`even` |
+
+Filters and sorts also behave differently across separate commands. Filters are not additive: typing a filter command replaces whatever filters were active before, rather than adding to them. Sorts are additive: a command that only sets a Sort By, for instance, leaves whatever's currently active for Sort Order, Sort Wall, and the rest untouched. `random` bends both of these rules in its own particular way, see [Random](#random) below for the full picture.
+
+### Combining commands
+
+Sort and filter categories can be freely mixed and stacked within a single command, in more or less any order:
+
+- `genre action year 1990` sets a genre and a year filter together
+- `sort runtime descending` sets both Sort By and Sort Order in one go
+- `genre horror studio a24 sort name ascending` combines two filter categories with two sort fields, all at once
+- `tag christmas alternating right screen` sets a filter alongside two of the wall settings (Sort Wall and Start Wall)
+
+There's no real limit to how many of these get stacked together in one line, as long as each value ends up next to the category it belongs to.
+
+### Random
+
+`random` isn't one single thing, it means something different depending on what else is in the command:
+
+- **Bare `random`**: reshuffles the wall to a random order, from the whole library. Combined with filters in the same command (`random genre action`), it reshuffles randomly within just that filtered set instead, following the same non-additive rule filters always follow
+- **`sort random`**: the one way to make Random behave as a normal, additive sort field instead, one that stays active and combines with everything else the way `name` or `runtime` would, rather than being a one-off reset. The word `sort` immediately before it is what changes its meaning
+- **`random` plus an effect word, or `random play`/`play random`**: picks a random movie (optionally filtered, same rule as above) and immediately starts that effect for it, or the movie itself for `play`/`start`, rather than just reshuffling the wall and leaving it at that
+- **`random effect`/`random poster effect`/`random play effect`/`play random effect`**: bare only, doesn't combine with a title. Context-dependent: with something already playing, it swaps in a random poster effect for that same item. With nothing playing, it picks an entirely new random movie first and gives it a random poster effect
+- **`random%`/`random %`/`random percent`, `chapter random`/`random chapter`**: works both ways. Bare, with a movie already playing, it seeks to a random position or chapter within it. Combined with a title (`gladiator random%`, `gladiator chapter random`), it starts that movie fresh at a random position or chapter right away
 
 ---
 
@@ -284,7 +357,7 @@ Everything the room lets you adjust lives in the **Options menu** (`M` key), spl
 - **Controls**: movement speed, auto sprint, jump, crouch mode, controller settings (including deadzone and look sensitivity), and how the keyboard console's own indicator looks and behaves
 - **Display**: crosshair, on-screen controls UI, field of view, player height, and every brightness level in the room (overall lighting, screen, backwall, poster wall, each with their own active/idle split, plus the poster light on top)
 - **Room**: room theme, room size and scale mode, kiosk appearance and its branding logo behavior, and the rope barrier
-- **Posters**: which poster effects show up in the interaction menu at all, environment effects per poster type, trailer/theme video audio replacement, and the entire Ambient Mode editor (all three profiles and every sequence step)
+- **Posters**: which poster effects show up in the interaction menu at all, environment effects per poster type, individual volume and playback order for Trailer/Theme Video/Theme Song when a movie has more than one, Theme Song's own full timing suite (start position, delay, fade in/out), trailer/theme video audio replacement, and the entire Ambient Mode editor (all three profiles and every sequence step)
 - **Backwall**: the main fanart and clearlogo up top can either stay static or shuffle on a timer, with off/auto/forced overscan handling. Beyond that, there's an optional side grid for your extra `backdrop1-X.jpg` images, off, 1x1, or 2x2, mirrored on both sides of the backwall, with an option to balance video tiles evenly across both sides rather than letting them cluster on one. Trailers and theme videos can optionally be shuffled into that same grid, each with its own order mode (always the first one found, cycling through all of them, one random pick, or a shuffled rotation) and its own start position (from the beginning, or a random point). Movies play a random scene instead, clipped to a configurable percentage range (say, only ever showing something between 10% and 90% into the runtime, never the very start or end). Each of the three video types, trailers, theme videos, and movies, has its own slot count, so you can dial in how much of the grid leans toward one or the other, or turn any of them off entirely
 - **Misc**: the browser tab icon, where "Go to Library" opens, and a read-only view of the active Smart Launch settings (Smart Launch itself is only actually editable in the plugin's admin settings, see below, which is also where the backup/restore via code lives, not here)
 
