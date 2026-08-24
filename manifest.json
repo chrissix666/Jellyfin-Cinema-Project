@@ -12,9 +12,9 @@
                 "version": "1.2.0.0",
                 "targetAbi": "10.10.0.0",
                 "sourceUrl": "https://github.com/chrissix666/Jellyfin-Cinema-Project/releases/download/v1.2.0.0/Cinema.Project_1.2.0.0.zip",
-                "checksum": "8c7f9788cd2789e60743bbc2a0ddbf69",
+                "checksum": "0ec5f6a2605c44a7410583184d84b918",
                 "timestamp": "2026-08-24T00:00:00Z",
-                "changelog": "Added server-side persisted settings for Kiosk, Controls, Display, Room, and Backwall (59 fields), plus Misc's own two remaining fields. Moved the earlier standalone Smart Launch settings page into this same 7-tab structure. Added a Backup/restore via code feature to Misc. Posters (51 fields) remains a placeholder for a later release."
+                "changelog": "Added server-side persisted settings for Kiosk, Controls, Display, Room, Posters (including Ambient Mode), and Backwall (110 fields), plus Misc's own two remaining fields. Moved the earlier standalone Smart Launch settings page into this same 7-tab structure. Added a Backup/restore via code feature to Misc. Every setting is now feature complete and server-side persisted."
             }
         ]
     }
