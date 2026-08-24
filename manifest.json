@@ -11,9 +11,9 @@
             {
                 "version": "1.2.0.0",
                 "targetAbi": "10.10.0.0",
-                "sourceUrl": "REPLACE_ME -- z.B. https://github.com/chrissix666/Jellyfin-Cinema-Project/releases/download/v1.2.0.0/CinemaProjectLoader_1.2.0.0.zip (der exakte Dateiname, den du beim Release-Upload vergibst)",
-                "checksum": "REPLACE_ME -- MD5-Hash der hochgeladenen .zip-Datei, erst nach dem Erstellen berechenbar",
-                "timestamp": "REPLACE_ME -- z.B. 2026-08-24T12:00:00Z (Zeitpunkt des Releases, UTC)",
+                "sourceUrl": "https://github.com/chrissix666/Jellyfin-Cinema-Project/releases/download/v1.2.0.0/Cinema.Project_1.2.0.0.zip",
+                "checksum": "sha256:820b32dfa7a911c662369cef906807c5f04aa14369ef71b6a40d746084f2de9c",
+                "timestamp": "2026-08-24T00:00:00Z",
                 "changelog": "Added server-side persisted settings for Kiosk, Controls, Display, Room, and Backwall (59 fields), plus Misc's own two remaining fields. Moved the earlier standalone Smart Launch settings page into this same 7-tab structure. Added a Backup/restore via code feature to Misc. Posters (51 fields) remains a placeholder for a later release."
             }
         ]
