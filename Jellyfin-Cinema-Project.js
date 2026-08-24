@@ -6142,8 +6142,8 @@ import * as THREE from '${THREE_CDN}';
   const CC_COLLECTION_WORDS = ['collection', 'anthology', 'saga', 'set', 'filmreihe', 'colecao', 'coleccion', 'collectie', 'collezione', 'kolekcja', 'kolekce', 'kolekcia', 'kolekcija', 'zbirka', 'colectie', 'gyujtemeny', 'kokoelma', 'samling', 'koleksiyon'];
   const CC_EFFECT_WORDS = {
     library: 'library', movie: 'movie', trailer: 'trailer',
-    themevideo: 'themevideo', 'theme video': 'themevideo', 'video theme': 'themevideo', backdrop: 'themevideo',
-    themesong: 'themesong', 'theme song': 'themesong', 'song theme': 'themesong', song: 'themesong', ost: 'themesong', soundtrack: 'themesong', 'main theme': 'themesong', theme: 'themesong', video: 'themesong',
+    themevideo: 'themevideo', 'theme video': 'themevideo', 'video theme': 'themevideo', backdrop: 'themevideo', video: 'themevideo',
+    themesong: 'themesong', 'theme song': 'themesong', 'song theme': 'themesong', song: 'themesong', ost: 'themesong', soundtrack: 'themesong', 'main theme': 'themesong', theme: 'themesong',
     fanartwall: 'fanartwall', fanart: 'fanartwall', 'fanart wall': 'fanartwall', 'wall fanart': 'fanartwall',
     ambient: 'ambient', ambiente: 'ambient', 'ambiente mode': 'ambient', 'ambient mode': 'ambient',
   };
