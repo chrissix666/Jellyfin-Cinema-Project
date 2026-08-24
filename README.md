@@ -94,7 +94,7 @@ There are two ways to install Cinema Project, and both end up running the exact 
 **Where the Cinema button shows up in the Jellyfin Web header**
 
 <img src="screenshots/cinema-button-location.png" width="700" alt="Where the Cinema button shows up in the Jellyfin Web header">
-4. Don't miss the plugin's own settings page under **Dashboard → Plugins → Cinema Project**. This is easy to overlook, but it's worth finding: settings changed here are saved permanently and apply server-wide for everyone, unlike the in-room Options menu (`M` key), which only affects your current browser session and resets the moment you close the tab. See [Configuration & Options](#configuration--options) for the full picture.
+4. Don't miss the plugin's own settings page under **Dashboard → My Plugins → Cinema Project**. This is easy to overlook, but it's worth finding: settings changed here are saved permanently and apply server-wide for everyone, unlike the in-room Options menu (`M` key), which only affects your current browser session and resets the moment you close the tab. See [Configuration & Options](#configuration--options) for the full picture.
 
 The plugin hooks itself into the Jellyfin Web interface automatically, so no separate injector step is needed. The script itself is delivered via jsDelivr.
 
@@ -188,9 +188,9 @@ The room can also be redressed entirely: six different themes (Velvet, Starship,
 
 ### Controls
 
-**The in-room controls list, opened with the C key**
+**The in-room controls list, opened with the C key or the View button on a controller**
 
-<img src="screenshots/controls-list.png" width="700" alt="The in-room controls list, opened with the C key">
+<img src="screenshots/controls-list.png" width="700" alt="The in-room controls list, opened with the C key or the View button on a controller">
 
 | Action | Keyboard/Mouse | Controller |
 |---|---|---|
@@ -397,19 +397,19 @@ Everything the room lets you adjust lives in the **Options menu** (`M` key), spl
 - **Backwall**: the main fanart and clearlogo up top can either stay static or shuffle on a timer, with off/auto/forced overscan handling. Beyond that, there's an optional side grid for your extra `backdrop1-X.jpg` images, off, 1x1, or 2x2, mirrored on both sides of the backwall, with an option to balance video tiles evenly across both sides rather than letting them cluster on one. Trailers and theme videos can optionally be shuffled into that same grid, each with its own order mode (always the first one found, cycling through all of them, one random pick, or a shuffled rotation) and its own start position (from the beginning, or a random point). Movies play a random scene instead, clipped to a configurable percentage range (say, only ever showing something between 10% and 90% into the runtime, never the very start or end). Each of the three video types, trailers, theme videos, and movies, has its own slot count, so you can dial in how much of the grid leans toward one or the other, or turn any of them off entirely
 - **Misc**: the browser tab icon, where "Go to Library" opens, and a read-only view of the active Smart Launch settings (Smart Launch itself is only actually editable in the plugin's admin settings, see below, which is also where the backup/restore via code lives, not here)
 
-**All six in-room Options menu tabs: Controls, Display, Room, Posters, Backwall, Misc**
+**The in-room Options menu, opened with the M key or the Menu button on a controller**
 
-<img src="screenshots/ingame-menu.png" width="700" alt="All six in-room Options menu tabs: Controls, Display, Room, Posters, Backwall, Misc">
+<img src="screenshots/ingame-menu.png" width="700" alt="The in-room Options menu, opened with the M key or the Menu button on a controller">
 
 Persistence works like this:
 
 - **In-room (Options menu)**: not persistent. Changes apply immediately but only for your current session in the current browser tab, and reset back to default the moment you close the tab or open Cinema again later
-- **Plugin** (`Dashboard → Plugins → Cinema Project`): persistent, and server-wide for everyone. Covers all seven tabs, Kiosk, Controls, Display, Room, Posters (Ambient Mode included), Backwall, and Misc, with Smart Launch living inside that last one rather than getting a tab of its own. The plugin's Misc tab also has its own backup/restore via code, generating a single code for everything saved there, which doubles as its own extra layer of persistence: a way to back up your server-wide configuration outside of Jellyfin entirely, or move it to another server
+- **Plugin** (`Dashboard → My Plugins → Cinema Project`): persistent, and server-wide for everyone. Covers all seven tabs, Kiosk, Controls, Display, Room, Posters (Ambient Mode included), Backwall, and Misc, with Smart Launch living inside that last one rather than getting a tab of its own. The plugin's Misc tab also has its own backup/restore via code, generating a single code for everything saved there, which doubles as its own extra layer of persistence: a way to back up your server-wide configuration outside of Jellyfin entirely, or move it to another server
 - **Standalone script** (no plugin): there's no persistence mechanism here at all, nowhere for it to save to. If you want to change what a default actually is, the only way is opening the `.js` file itself in a text editor and changing the value there directly, the same config blocks (`SMART_LAUNCH_CONFIG`, `MENU_CONFIG`) the script always reads its defaults from
 
-**All seven plugin admin settings tabs: Kiosk, Controls, Display, Room, Posters, Backwall, Misc**
+**The plugin admin settings tabs, found under Dashboard → My Plugins → Cinema Project**
 
-<img src="screenshots/addon-settings.png" width="700" alt="All seven plugin admin settings tabs: Kiosk, Controls, Display, Room, Posters, Backwall, Misc">
+<img src="screenshots/addon-settings.png" width="700" alt="The plugin admin settings tabs, found under Dashboard → My Plugins → Cinema Project">
 
 ### Settings not applying?
 
