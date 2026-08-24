@@ -1,0 +1,32 @@
+---
+name: "Cinema Project"
+guid: "a6e6b7d2-2f6a-4c7e-9c1a-6d1e3f9b8a11"
+version: "1.2.0.0"
+targetAbi: "10.10.0.0"
+framework: "net8.0"
+overview: "Watch and listen to the soul of a movie, a visualized experience you step into like a video game."
+description: >
+  Every movie already has a soul: most of it buried in a poster and
+  thumbnail. Cinema Project builds a virtual room experience around that
+  instead. Walk through it like a video game: poster art lining the walls,
+  a fanart and video slideshow across the backwall, theme songs filling the
+  room, trailers, theme videos, or the movie itself playing on the screen up
+  front. None of it is new, it's what your library already had, finally
+  given space to be experienced all together, visualized all at once. On
+  top of that, Ambient Mode lets you create your own feature show, similar
+  to a pre-roll.
+category: "Experimental"
+owner: "chrissix666"
+artifacts:
+  - "CinemaProjectLoader.dll"
+changelog: >
+  1.2.0.0: Added server-side persisted settings for Kiosk, Controls, Display,
+  Room, and Backwall (59 fields), plus Misc's own two remaining fields. Moved
+  the earlier standalone Smart Launch settings page into this same 7-tab
+  structure. Added a Backup/restore via code feature to Misc. Posters (51
+  fields) remains a placeholder for a later release.
+  1.1.0.0: Added a real admin configuration page (Dashboard > Plugins >
+  Cinema Project) with server-side persisted Smart Launch settings. Also
+  includes the earlier fixes for File Transformation registration (typed
+  payload deserialization) and script delivery (switched from
+  raw.githubusercontent.com to jsDelivr to fix a MIME-type execution block).
