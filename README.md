@@ -233,7 +233,11 @@ Ambient Mode, the in-room keyboard console, and Smart Launch are each substantia
 
 Ambient Mode is the automatically running show that takes over the room when nobody's actively browsing, functionally identical to a poster effect itself (it's one of the seven [poster effects](#poster-effects), and can also be triggered directly by walking up to a poster and picking it, or from the console).
 
-There are three independent profiles to build. Each one holds up to ten sequence steps, has its own toggle for whether it loops back to the start once finished, and its own step count.
+There are three independent profiles to build. Each one holds up to ten sequence steps, has its own toggle for whether it loops back to the start once finished, and its own step count. Building all of this in the plugin's own admin settings saves it permanently rather than just for the current session, and the editor there also gives a compact, collapsed overview of every sequence at a glance (poster effect, duration, and environment effects, all in one line) before you expand any one of them to fine-tune it further.
+
+**The persistent Ambient Mode editor in the plugin admin settings, with an overview of every sequence**
+
+<img src="screenshots/ambient-mode-editor.png" width="700" alt="The persistent Ambient Mode editor in the plugin admin settings, with an overview of every sequence">
 
 Every sequence step is built from the same two layers the rest of the room uses:
 
