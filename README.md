@@ -90,6 +90,8 @@ There are two ways to install Cinema Project, and both end up running the exact 
    ```
 2. Go to **Catalog**, find **Cinema Project** (category: Experimental), install it, and restart the Jellyfin server.
 3. Reload Jellyfin Web. A Cinema button appears in the header on supported desktop browsers.
+
+<img src="screenshots/cinema-button-location.png" width="800" alt="Where the Cinema button shows up in the Jellyfin Web header">
 4. Don't miss the plugin's own settings page under **Dashboard → Plugins → Cinema Project**. This is easy to overlook, but it's worth finding: settings changed here are saved permanently and apply server-wide for everyone, unlike the in-room Options menu (`M` key), which only affects your current browser session and resets the moment you close the tab. See [Configuration & Options](#configuration--options) for the full picture.
 
 The plugin hooks itself into the Jellyfin Web interface automatically, so no separate injector step is needed. The script itself is delivered via jsDelivr.
@@ -110,13 +112,22 @@ The Cinema room is made up of a few different elements, each with its own job.
 
 **The Kiosk** is the room's input element. Walk up to it and it rises out of the floor. This is where you search, filter, and sort, by movies, favorites, collections, genres, tags, studios, or people. The physical kiosk itself is really just theater, though, not a requirement: the search panel opens from its own keyboard/controller shortcut regardless of whether you've walked up to anything, so how the kiosk actually appears in the room is entirely optional. By default it dynamically rises when you approach and retracts when you step away, but it can also be set to stay permanently risen, or turned off entirely so no physical object exists in the room at all, without the shortcut losing any of its function either way. It also carries its own bit of showmanship: it can display a 3D clearlogo of whichever movie's poster effect is currently active, with adjustable floating speed and an optional glitch effect (frequency and intensity both tunable). When a movie has no clearlogo of its own, it falls back to Cinema Project's own wordmark logo instead, or that wordmark can be shown permanently regardless, depending on how it's set.
 
+<img src="screenshots/kiosk-clearlogo-discart.png" width="800" alt="Kiosk with rotating logo and rotating discart projection">
+
+<img src="screenshots/kiosk-menu.png" width="700" alt="The Kiosk's own search, filter, and sort panel">
+
 **The Front Wall**, the screen up front, is output too, and doubles as two different things depending on what's active: a video wall for the video poster effects (Movie, Trailer, Theme Video), showing exactly that, or an art wall for the non-video ones (Theme Song, Fanart Wall), optionally showing a still image instead when Screen Art is enabled for it: the movie's own landscape artwork where available, or its fanart with the clearlogo layered on top if not, or its poster as a last resort. See [Screen Art](#environment-effects) below for the full picture.
 
 **The Side Walls (the posters)** are both input and output, and where the actual interaction with Cinema Project happens. The Kiosk only sorts, filters, and searches; it's the posters themselves that trigger anything. They show the artwork itself, but you can also interact with them directly: walk up, interact, and a menu opens with a set of poster effects to choose from. See [poster effects](#poster-effects) below. The whole library can also be paged through as a wall at a time, rather than one poster at a row.
 
 **The Back Wall**, behind you as you browse, is a pure output element: a fanart wall. The main artwork sits centered, with the movie's clearlogo above it, and an optional grid to either side (off, 1x1, or 2x2) fills in with your own extra fanart images, optionally mixed with video, trailers, theme videos, or short movie clips (see [Features](#features) for the full breakdown of how that mix works).
 
+<img src="screenshots/backwall-grid.png" width="750" alt="The four Backwall grid states: off, 1x1, 2x2 images, 2x2 images and videos mixed">
+
 ### Poster effects
+
+<img src="screenshots/poster-interaction.png" width="450" alt="Poster before and after interacting with it, opening its effect menu">
+
 
 Interacting with a poster opens a menu offering:
 
@@ -152,9 +163,15 @@ With looping off, Movie, Trailer, and Theme Video can each be told what to do on
 
 **Room size** can be changed seamlessly at any time, growing or shrinking with a smooth animation, no reload and no leaving the room required. There are three sizes to pick from, 10, 20, or 30 posters per wall, and two ways of scaling into a bigger size: Length Only, which just extends the room, or Full Scale, which scales the whole room proportionally. In Full Scale mode specifically, movement speed and the player's own position can each independently be told to scale along with the room, or stay exactly as they were before the resize. Which size the room starts at by default is itself configurable.
 
+<img src="screenshots/room-size-10.png" width="800" alt="10 posters per wall, idle, bright, and dark states">
+<img src="screenshots/room-size-20.png" width="800" alt="20 posters per wall, idle, bright, and dark states">
+<img src="screenshots/room-size-30.png" width="800" alt="30 posters per wall, idle, bright, and dark states">
+
 The room can also be redressed entirely: six different themes (Velvet, Starship, Neon, Cyber, Classic, Lounge) reskin the walls, floor, curtain, kiosk, and lighting mood, without changing the room's actual shape.
 
 ### Controls
+
+<img src="screenshots/controls-list.png" width="700" alt="The in-room controls list, opened with the C key">
 
 | Action | Keyboard/Mouse | Controller |
 |---|---|---|
@@ -354,6 +371,8 @@ Movies (detail view), a specific movie's own page in Jellyfin Web, is where Smar
 
 Everything the room lets you adjust lives in the **Options menu** (`M` key), split across six tabs. Changes take effect immediately.
 
+<img src="screenshots/ingame-menu.png" width="800" alt="All six in-room Options menu tabs: Controls, Display, Room, Posters, Backwall, Misc">
+
 - **Controls**: movement speed, auto sprint, jump, crouch mode, controller settings (including deadzone and look sensitivity), and how the keyboard console's own indicator looks and behaves
 - **Display**: crosshair, on-screen controls UI, field of view, player height, and every brightness level in the room (overall lighting, screen, backwall, poster wall, each with their own active/idle split, plus the poster light on top)
 - **Room**: room theme, room size and scale mode, kiosk appearance and its branding logo behavior, and the rope barrier
@@ -365,7 +384,17 @@ Persistence works like this:
 
 - **In-room (Options menu)**: not persistent. Changes apply immediately but only for your current session in the current browser tab, and reset back to default the moment you close the tab or open Cinema again later
 - **Plugin** (`Dashboard → Plugins → Cinema Project`): persistent, and server-wide for everyone. Covers all seven tabs, Kiosk, Controls, Display, Room, Posters (Ambient Mode included), Backwall, and Misc, with Smart Launch living inside that last one rather than getting a tab of its own. The plugin's Misc tab also has its own backup/restore via code, generating a single code for everything saved there, which doubles as its own extra layer of persistence: a way to back up your server-wide configuration outside of Jellyfin entirely, or move it to another server
+
+<img src="screenshots/addon-settings.png" width="800" alt="All seven plugin admin settings tabs: Kiosk, Controls, Display, Room, Posters, Backwall, Misc">
 - **Standalone script** (no plugin): no persistence option at all. Permanently changing a default here means editing it directly inside the `.js` file
+
+### Settings not applying?
+
+Every once in a while, a saved setting doesn't seem to take effect right away, even after saving and reloading. To be explicit about this: **this is not a bug in Cinema Project**, it's normal browser caching behavior. Your browser can hang onto an old cached copy of the page or script instead of fetching the new one, and this same thing can happen with other Jellyfin plugins and addons too, not just this one; it's just how browsers work, not something specific to Cinema Project.
+
+<img src="screenshots/settings-cache-workaround.png" width="700" alt="Settings not applying, disable cache workaround">
+
+If that happens: open your browser's DevTools (right-click anywhere, **Inspect**), go to the **Network** tab, and check **Disable cache**. Leave DevTools open, don't close it, then refresh the page and open Cinema again from the button. With DevTools open and that box checked, the browser is forced to fetch everything fresh instead of reusing anything cached.
 
 ---
 
