@@ -1,7 +1,3 @@
-[Jellyfin Projects](https://linktr.ee/JellyfinProjects) | [Kodi Projects](https://linktr.ee/KodiProjects)
-
----
-
 <img src="thumb.png" width="100%">
 
 *Not affiliated with or endorsed by Jellyfin.*
@@ -14,11 +10,14 @@
 - [Similar Projects](#similar-projects)
 - [Requirements](#requirements)
 - [Installation](#installation)
-- [The Room](#the-room)
-- [Features](#features)
-- [Ambient Mode](#ambient-mode)
-- [Keyboard console](#keyboard-console)
-- [Smart Launch](#smart-launch)
+- [The Room - Layout](#the-room---layout)
+- [The Room - Poster Effects](#the-room---poster-effects)
+- [The Room - Environment Effects](#the-room---environment-effects)
+- [Feature Overview](#feature-overview)
+- [Feature Special - Ambient Mode](#feature-special---ambient-mode)
+- [Feature Special - Keyboard console](#feature-special---keyboard-console)
+- [Feature Special - Smart Launch](#feature-special---smart-launch)
+- [Controls](#controls)
 - [Configuration & Options](#configuration--options)
 - [Closing Words](#closing-words)
 - [License](#license)
@@ -117,11 +116,13 @@ Keep in mind: with this variant, the in-room Options menu still lets you change 
 
 ---
 
-## The Room
+## The Room - Layout
 
 The Cinema room is made up of a few different elements, each with its own job.
 
-**The Kiosk** is the room's input element. Walk up to it and it rises out of the floor. This is where you search, filter, and sort, by movies, favorites, collections, genres, tags, studios, or people. The physical kiosk itself is really just theater, though, not a requirement: the search panel opens from its own keyboard/controller shortcut regardless of whether you've walked up to anything, so how the kiosk actually appears in the room is entirely optional. By default it dynamically rises when you approach and retracts when you step away, but it can also be set to stay permanently risen, or turned off entirely so no physical object exists in the room at all, without the shortcut losing any of its function either way. It also carries its own bit of showmanship: it can display a 3D clearlogo of whichever movie's poster effect is currently active, with adjustable floating speed and an optional glitch effect (frequency and intensity both tunable). When a movie has no clearlogo of its own, it falls back to Cinema Project's own wordmark logo instead, or that wordmark can be shown permanently regardless, depending on how it's set.
+### The Kiosk
+
+This is the room's own input element. Walk up to it and it rises out of the floor. From here you search, filter, and sort, by movies, favorites, collections, genres, tags, studios, or people. The physical kiosk itself is really just theater, though, not a requirement: the search panel opens from its own keyboard/controller shortcut regardless of whether you've walked up to anything, so how it actually appears in the room is entirely optional. By default it dynamically rises when you approach and retracts when you step away, but it can also be set to stay permanently risen, or turned off entirely so no physical object exists in the room at all, without the shortcut losing any of its function either way. It also carries its own bit of showmanship: it can display a 3D clearlogo of whichever movie's poster effect is currently active, with adjustable floating speed and an optional glitch effect (frequency and intensity both tunable). When a movie has no clearlogo of its own, it falls back to Cinema Project's own wordmark logo instead, or that wordmark can be shown permanently regardless, depending on how it's set.
 
 **Kiosk with rotating logo and rotating discart projection**
 
@@ -131,22 +132,28 @@ The Cinema room is made up of a few different elements, each with its own job.
 
 <img src="screenshots/kiosk-menu.png" width="700" alt="The Kiosk's own search, filter, and sort panel">
 
-**The Front Wall**, the screen up front, is output too, and doubles as two different things depending on what's active: a video wall for the video poster effects (Movie, Trailer, Theme Video), showing exactly that, or an art wall for the non-video ones (Theme Song, Fanart Wall), optionally showing a still image instead when Screen Art is enabled for it: the movie's own landscape artwork where available, or its fanart with the clearlogo layered on top if not, or its poster as a last resort. See [Screen Art](#environment-effects) below for the full picture.
+### The Front Wall
 
-**The Side Walls (the posters)** are both input and output, and where the actual interaction with Cinema Project happens. The Kiosk only sorts, filters, and searches; it's the posters themselves that trigger anything. They show the artwork itself, but you can also interact with them directly: walk up, interact, and a menu opens with a set of poster effects to choose from. See [poster effects](#poster-effects) below. The whole library can also be paged through as a wall at a time, rather than one poster at a row.
+The screen up front is output too, and doubles as two different things depending on what's active: a video wall for the video poster effects (Movie, Trailer, Theme Video), showing exactly that, or an art wall for the non-video ones (Theme Song, Fanart Wall), optionally showing a still image instead when Screen Art is enabled for it: the movie's own landscape artwork where available, or its fanart with the clearlogo layered on top if not, or its poster as a last resort. See [Screen Art](#the-room---environment-effects) below for the full picture.
 
-**The Back Wall**, behind you as you browse, is a pure output element: a fanart wall. The main artwork sits centered, with the movie's clearlogo above it, and an optional grid to either side (off, 1x1, or 2x2) fills in with your own extra fanart images, optionally mixed with video, trailers, theme videos, or short movie clips (see [Features](#features) for the full breakdown of how that mix works).
+### The Side Walls (the posters)
+
+These are both input and output, and where the actual interaction with Cinema Project happens. The Kiosk only sorts, filters, and searches; it's the posters themselves that trigger anything. They show the artwork itself, but you can also interact with them directly: walk up, interact, and a menu opens with a set of poster effects to choose from. See [poster effects](#the-room---poster-effects) below. The whole library can also be paged through as a wall at a time, rather than one poster at a row.
+
+### The Back Wall
+
+Behind you as you browse sits a pure output element: a fanart wall. The main artwork sits centered, with the movie's clearlogo above it, and an optional grid to either side (off, 1x1, or 2x2) fills in with your own extra fanart images, optionally mixed with video, trailers, theme videos, or short movie clips (see [Features](#feature-overview) for the full breakdown of how that mix works).
 
 **The four Backwall grid states: off, 1x1, 2x2 images, 2x2 images and videos mixed**
 
 <img src="screenshots/backwall-grid.png" width="700" alt="The four Backwall grid states: off, 1x1, 2x2 images, 2x2 images and videos mixed">
 
-### Poster effects
+## The Room - Poster Effects
 
 Interacting with a poster opens a menu offering:
 
 - **Go to Library**: jumps back to that movie's own page in Jellyfin Web, either in a new tab that opens the item directly, or by just navigating the original tab there without switching to it, whichever you've set under [Configuration & Options](#configuration--options)
-- **Movie**: plays the movie itself on the screen up front, seekable via chapter, percent, resume, and replay commands from the [keyboard console](#keyboard-console)
+- **Movie**: plays the movie itself on the screen up front, seekable via chapter, percent, resume, and replay commands from the [keyboard console](#feature-special---keyboard-console)
 - **Trailer**: plays the movie's trailer on the screen
 - **Theme Video**: plays the movie's theme video on the screen
 - **Theme Song**: plays the movie's theme song, filling the room with sound
@@ -159,7 +166,7 @@ Which of these appear in the menu at all is itself configurable (see [Configurat
 
 <img src="screenshots/poster-interaction.png" width="700" alt="Poster before and after interacting with it, opening its effect menu">
 
-### Environment effects
+## The Room - Environment Effects
 
 Movie, Trailer, Theme Video, Theme Song, and Fanart Wall each also trigger their own combination of environment effects: what the rest of the room does while that poster effect plays. The available environment effects are:
 
@@ -195,35 +202,7 @@ With looping off, Movie, Trailer, and Theme Video can each be told what to do on
 
 The room can also be redressed entirely: six different themes (Velvet, Starship, Neon, Cyber, Classic, Lounge) reskin the walls, floor, curtain, kiosk, and lighting mood, without changing the room's actual shape.
 
-### Controls
-
-**The in-room controls list, opened with the C key or the View button on a controller**
-
-<img src="screenshots/controls-list.png" width="700" alt="The in-room controls list, opened with the C key or the View button on a controller">
-
-| Action | Keyboard/Mouse | Controller |
-|---|---|---|
-| Move | WASD / Arrow keys | Left stick |
-| Sprint | Shift | Left stick click |
-| Jump | Space | A |
-| Crouch | Ctrl | B |
-| Use / Interact | E / Enter / Left click | A |
-| Cancel / Back | Right click | B |
-| Stop playback | Backspace | Y |
-| Toggle controls list | C | View |
-| Toggle Options menu | M | Menu |
-| Toggle Kiosk | K | X |
-| Toggle fullscreen | F | Right stick click |
-| Shrink / enlarge room | - / + | D-Pad up/down |
-| Previous / next poster page | , / . / PgUp / PgDn / mouse wheel | D-Pad left/right |
-
-Every action in the room, movement, interaction, menu navigation, resizing the room, browsing the poster wall, works identically with a controller as it does with a keyboard and mouse. Look sensitivity and controller deadzone are both adjustable in the Options menu, and two smaller behaviors are configurable too: Auto Sprint, on by default, means you're already moving at sprint speed without holding Shift at all; and Crouch Mode can be set to either hold Ctrl down or toggle it with a single press.
-
-Once the Options menu itself is open, the scheme switches to something more familiar: Arrow keys or WASD (D-Pad or left stick on a controller) move between fields and switch tabs, E/Enter/left click (A on a controller) confirms, and right click (B on a controller) closes it. Tabs can also be switched directly with A/D, the left/right arrow keys, or a controller's bumpers.
-
----
-
-## Features
+## Feature Overview
 
 - **An enormous amount of configurability**: from the overall look down to individual details (down to things like the rope barrier at the kiosk, the browser tab icon, or whether "Go to Library" opens in a new tab), almost everything can be adjusted. In-room, that's instant and needs no detour through any menu outside the room itself; saving it permanently is a separate story (see [Configuration & Options](#configuration--options))
 - **Seamless room resizing**: three sizes (10/20/30 posters per wall), two scaling modes (Length Only or Full Scale), a configurable default, all switchable at any time with no reload
@@ -238,9 +217,9 @@ Ambient Mode, the in-room keyboard console, and Smart Launch are each substantia
 
 ---
 
-## Ambient Mode
+## Feature Special - Ambient Mode
 
-Ambient Mode is the automatically running show that takes over the room when nobody's actively browsing, functionally identical to a poster effect itself (it's one of the seven [poster effects](#poster-effects), and can also be triggered directly by walking up to a poster and picking it, or from the console).
+Ambient Mode is the automatically running show that takes over the room when nobody's actively browsing, functionally identical to a poster effect itself (it's one of the seven [poster effects](#the-room---poster-effects), and can also be triggered directly by walking up to a poster and picking it, or from the console).
 
 There are three independent profiles to build. Each one holds up to ten sequence steps, has its own toggle for whether it loops back to the start once finished, and its own step count. Building all of this in the plugin's own admin settings saves it permanently rather than just for the current session, and the editor there also gives a compact, collapsed overview of every sequence at a glance (poster effect, duration, and environment effects, all in one line) before you expand any one of them to fine-tune it further.
 
@@ -251,7 +230,7 @@ There are three independent profiles to build. Each one holds up to ten sequence
 Every sequence step is built from the same two layers the rest of the room uses:
 
 - **A poster effect**: Movie, Trailer, Theme Video, Theme Song, or Fanart Wall, picking what that step actually plays (and, for Movie/Trailer/Theme Video/Theme Song, from the whole library, in either library order or randomized)
-- **A custom set of environment effects**: its own combination of Backwall Art, Screen Art, Disc Art, Poster Light, and Dim Room, independent of whatever that poster effect's own global default is (see [Environment effects](#environment-effects))
+- **A custom set of environment effects**: its own combination of Backwall Art, Screen Art, Disc Art, Poster Light, and Dim Room, independent of whatever that poster effect's own global default is (see [Environment effects](#the-room---environment-effects))
 
 On top of that, each step has its own detailed timing and playback controls:
 
@@ -266,7 +245,7 @@ This much control means a profile can, for example, open on a slow fanart wall w
 
 ---
 
-## Keyboard console
+## Feature Special - Keyboard console
 
 Interaction has a typed layer too: press Enter whenever no menu is open and nothing is focused, and a small command line appears. It's built for lazy, fuzzy typing rather than exact matching, and it accepts commands in more or less any order.
 
@@ -383,7 +362,7 @@ There's no real limit to how many of these get stacked together in one line, as 
 
 ---
 
-## Smart Launch
+## Feature Special - Smart Launch
 
 Press the Cinema button from a specific view already open in Jellyfin Web, rather than from the general dashboard, and Smart Launch carries that context straight into the room instead of always starting fresh.
 
@@ -396,6 +375,34 @@ Each of the views Smart Launch supports can be toggled independently: Movies (ge
 ### Auto-play from detail view
 
 Movies (detail view), a specific movie's own page in Jellyfin Web, is where Smart Launch gets genuinely satisfying. A details page can't reliably tell which of several possible prior list views (each with a potentially different sort or filter) it was actually reached from, so rather than guessing, it always starts the Poster Wall on that exact movie with Cinema's own default sort. Its toggle then doubles as the main switch for auto-play: with it on, opening Cinema from a movie's page doesn't just start you standing in front of its poster, it jumps straight into any poster effect for that movie right away, Movie, Trailer, Theme Video, Theme Song, Fanart Wall, or Ambient Mode. One click on a movie in Jellyfin Web, and you're already watching its trailer inside the room.
+
+---
+
+## Controls
+
+**The in-room controls list, opened with the C key or the View button on a controller**
+
+<img src="screenshots/controls-list.png" width="700" alt="The in-room controls list, opened with the C key or the View button on a controller">
+
+| Action | Keyboard/Mouse | Controller |
+|---|---|---|
+| Move | WASD / Arrow keys | Left stick |
+| Sprint | Shift | Left stick click |
+| Jump | Space | A |
+| Crouch | Ctrl | B |
+| Use / Interact | E / Enter / Left click | A |
+| Cancel / Back | Right click | B |
+| Stop playback | Backspace | Y |
+| Toggle controls list | C | View |
+| Toggle Options menu | M | Menu |
+| Toggle Kiosk | K | X |
+| Toggle fullscreen | F | Right stick click |
+| Shrink / enlarge room | - / + | D-Pad up/down |
+| Previous / next poster page | , / . / PgUp / PgDn / mouse wheel | D-Pad left/right |
+
+Every action in the room, movement, interaction, menu navigation, resizing the room, browsing the poster wall, works identically with a controller as it does with a keyboard and mouse. Look sensitivity and controller deadzone are both adjustable in the Options menu, and two smaller behaviors are configurable too: Auto Sprint, on by default, means you're already moving at sprint speed without holding Shift at all; and Crouch Mode can be set to either hold Ctrl down or toggle it with a single press.
+
+Once the Options menu itself is open, the scheme switches to something more familiar: Arrow keys or WASD (D-Pad or left stick on a controller) move between fields and switch tabs, E/Enter/left click (A on a controller) confirms, and right click (B on a controller) closes it. Tabs can also be switched directly with A/D, the left/right arrow keys, or a controller's bumpers.
 
 ---
 
