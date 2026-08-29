@@ -6,7 +6,7 @@
         "overview": "Watch and listen to the soul of a movie, a visualized experience you step into like a video game.",
         "owner": "chrissix666",
         "category": "Experimental",
-        "imageUrl": "https://raw.githubusercontent.com/chrissix666/Jellyfin-Cinema-Project/main/thumb.png",
+        "imageUrl": "https://raw.githubusercontent.com/chrissix666/Jellyfin-Cinema-Project/main/logo.png",
         "versions": [
             {
                 "version": "1.3.0.0",
