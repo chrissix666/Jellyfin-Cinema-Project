@@ -1,4 +1,4 @@
-<img src="thumb.png" width="100%">
+<img src="logo.png" width="100%">
 
 *Not affiliated with or endorsed by Jellyfin.*
 
