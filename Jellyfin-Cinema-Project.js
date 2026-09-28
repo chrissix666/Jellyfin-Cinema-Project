@@ -84,8 +84,8 @@
     //   - 'const MENU_CONFIG = {'
     // If asked for a specific line range as of right now: as of
     // SCRIPT_VERSION 19.93, SMART_LAUNCH_CONFIG is at lines 226–240, the
-    // two Ambient blocks together are at lines 2939–2996, and
-    // MENU_CONFIG is at lines 3117–3401 — but treat these as a
+    // two Ambient blocks together are at lines 3012–3069, and
+    // MENU_CONFIG is at lines 3190–3474 — but treat these as a
     // snapshot, not a guarantee; re-locate by the search text above if
     // the version number has changed since.
     //
@@ -1336,14 +1336,6 @@
             backdropMovieMaxPct: [['backdropLayout', '!=', 'off'], ['backdropMode', '==', 'shuffle'], ['backdropVideosEnabled', '==', 'true'], ['backdropMovieTiles', '>', 0]],
         },
     };
-    function injectFont() {
-        if (document.getElementById('jf-material-symbols')) return;
-        const link = document.createElement('link');
-        link.id = 'jf-material-symbols';
-        link.rel = 'stylesheet';
-        link.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined';
-        document.head.appendChild(link);
-    }
     function injectStyle() {
         if (document.getElementById('jf-cinema-style')) return;
         const style = document.createElement('style');
@@ -1353,21 +1345,31 @@
             #${BUTTON_ID} { background:transparent; border:none; padding:4px; margin:0 2px; cursor:pointer; color:inherit; }
             #${BUTTON_ID}:hover { background:rgba(255,255,255,0.1); border-radius:4px; }
             #${BUTTON_ID}.jf-cinema-loading .${ICON_CLASS} { opacity:0.5; }
+            #${BUTTON_ID}.jf-cinema-mui { display:inline-flex; padding:12px; margin:0; border-radius:50%; }
+            #${BUTTON_ID}.jf-cinema-mui:hover { border-radius:50%; }
         `;
         document.head.appendChild(style);
     }
-    function createButton() {
-        const header = document.querySelector(HEADER_SELECTOR);
-        if (!header || document.getElementById(BUTTON_ID)) return;
+    function buildCinemaButton() {
         const btn = document.createElement('button');
         btn.id = BUTTON_ID;
         btn.className = 'headerButton';
         btn.title = 'Cinema';
-        const icon = document.createElement('span');
-        icon.className = ICON_CLASS;
-        icon.textContent = 'cinematic_blur';
-        btn.appendChild(icon);
+        // Inline copy of Google's Material Symbols "cinematic_blur" (Outlined,
+        // FILL 0 / wght 400 / GRAD 0 / opsz 24 -- the exact axes the icon font
+        // was set to; Apache 2.0). The icon font it replaces had to be fetched
+        // from fonts.googleapis.com, and wherever that request was blocked or
+        // unreachable (ad/DNS blockers, a server without internet access, a
+        // reverse-proxy CSP) the button showed the raw ligature text
+        // "cinematic_blur" instead of the icon.
+        btn.innerHTML = '<svg class="' + ICON_CLASS + '" width="24" height="24" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="m160-840 80 160h120l-80-160h80l80 160h120l-80-160h80l80 160h120l-80-160h120q33 0 56.5 23.5T880-760v560q0 33-23.5 56.5T800-120H160q-33 0-56.5-23.5T80-200v-560q0-33 23.5-56.5T160-840Zm0 240v400h640v-400H160Zm0 0v400-400Zm160 360h320v-22q0-44-44-71t-116-27q-72 0-116 27t-44 71v22Zm160-160q33 0 56.5-23.5T560-480q0-33-23.5-56.5T480-560q-33 0-56.5 23.5T400-480q0 33 23.5 56.5T480-400Z"/></svg>';
         btn.addEventListener('click', () => openCinemaInNewTab(btn));
+        return btn;
+    }
+    function createButton() {
+        const header = document.querySelector(HEADER_SELECTOR);
+        if (!header || document.getElementById(BUTTON_ID)) return;
+        const btn = buildCinemaButton();
         const anchor =
             document.getElementById('jf-fullscreen-btn') ||
             document.getElementById('jf-scroll-btn') ||
@@ -1382,10 +1384,42 @@
         const interval = setInterval(() => {
             if (document.querySelector(HEADER_SELECTOR)) {
                 clearInterval(interval);
-                injectFont();
                 injectStyle();
                 createButton();
             }
+        }, 200);
+    }
+    // jellyfin-web's Experimental layout never shows the legacy header:
+    // RootAppRouter keeps it in the DOM (legacy views still touch it) but
+    // wraps it in display:none, so a button placed in .headerRight exists
+    // yet is never visible. Its own RootAppRouter decides the layout once
+    // per page load from this exact localStorage key (a layout change only
+    // applies after a reload), so reading it once here matches it exactly.
+    // That layout's toolbar is a React/MUI AppBar whose right-hand buttons
+    // share one flex box with the Search button — always a link to
+    // search.html — so that link's parent is where the button goes. The
+    // toolbar unmounts entirely on the video player route and renders no
+    // buttons at all on login/server-select pages, so the button is
+    // re-added whenever the box (re)appears.
+    const IS_EXPERIMENTAL_LAYOUT = localStorage.getItem('layout') === 'experimental';
+    function createExperimentalButton() {
+        const searchLink = document.querySelector('.MuiAppBar-root a[href*="search.html"]');
+        const box = searchLink && searchLink.parentElement;
+        if (!box) return;
+        const existing = document.getElementById(BUTTON_ID);
+        if (existing && existing.parentElement === box) return;
+        if (existing) existing.remove();
+        const btn = buildCinemaButton();
+        btn.classList.add('jf-cinema-mui');
+        box.prepend(btn);
+    }
+    function waitForExperimentalToolbar() {
+        const interval = setInterval(() => {
+            if (!document.body) return;
+            clearInterval(interval);
+            injectStyle();
+            createExperimentalButton();
+            new MutationObserver(createExperimentalButton).observe(document.body, { childList: true, subtree: true });
         }, 200);
     }
     function waitForApiClient() {
@@ -1410,7 +1444,7 @@
         // not out here in the surrounding HTML/CSS text, where it would
         // just become visible page content instead of an actual comment.
         return `<!doctype html>
-<html lang="en"><head><meta charset="UTF-8" /><title>Cinema</title>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="darkreader-lock" /><title>Cinema</title>
 <link rel="icon" id="faviconLink" href="${session.serverUrl}/web/favicon.ico" />
 <style>
   * { box-sizing: border-box; }
@@ -1421,8 +1455,8 @@
   #cinemaConsoleInput { position: fixed; top: -100px; left: -100px; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: none; background: transparent; }
   #cinemaConsoleIndicator { position: fixed; padding: 4px 10px; background: rgba(0,0,0,0.6); font-family: monospace; font-size: 13px; border-radius: 6px; z-index: 999999; pointer-events: none; opacity: 0; transition: opacity 0.15s ease; display: none; white-space: pre; }
   #tooltip { position: absolute; top: 58%; left: 50%; transform: translateX(-50%); color: #f0e2c8; background: rgba(10,6,4,0.75); border: 1px solid #7a4a1f; padding: 6px 14px; font-size: 13px; letter-spacing: 1px; display: none; white-space: nowrap; text-align: center; align-items: center; gap: 8px; }
-  #tooltip .trailerhint { font-size: 11px; color: #d8a84e; border: 1px solid #7a4a1f; border-radius: 3px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 3px; line-height: 1; }
-  #tooltip .trailerhint.blinkRed { color: #ff4444; border-color: #ff4444; animation: trailerBlink 0.4s step-start 4; }
+  #tooltip .trailerhint { font-size: 11px; color: #d8a84e; border: 1px solid transparent; outline: 1px solid #7a4a1f; outline-offset: -1px; border-radius: 3px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 3px; line-height: 1; }
+  #tooltip .trailerhint.blinkRed { color: #ff4444; outline-color: #ff4444; animation: trailerBlink 0.4s step-start 4; }
   @keyframes trailerBlink { 50% { opacity: 0.15; } }
   #instructions { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); color: #b89968; font-size: 12px; letter-spacing: 1px; text-align: center; background: rgba(10,6,4,0.55); padding: 6px 16px; white-space: nowrap; }
   #loadProgress { position: absolute; bottom: 18px; right: 18px; color: #d8a84e; font-size: 12px; letter-spacing: 1px; background: rgba(10,6,4,0.55); padding: 6px 14px; display: none; }
@@ -1556,6 +1590,20 @@
   #panel button.secondary { background: transparent; }
   #panel button:hover { background: #9a2a2a; }
   #panel button.secondary:hover { background: rgba(255,255,255,0.08); }
+  /* Chrome/Edge's "Auto Dark Mode for Web Contents" lightens every text
+     colour darker than roughly mid-grey, so these dim/dark texts are painted
+     through background-clip:text instead -- a background colour it leaves
+     untouched. Same colours, same selectors as the rules above. */
+  #menuOverlay .defaultHint, #menuDefaultNote, #panelSortDefaultNote, .darkTextKeep { -webkit-text-fill-color: transparent; background-image: linear-gradient(#5a4c3c,#5a4c3c); -webkit-background-clip: text; background-clip: text; }
+  .subHead { -webkit-text-fill-color: transparent; background-image: linear-gradient(#b08a4a,#b08a4a); -webkit-background-clip: text; background-clip: text; }
+  .ctrlStatus .statusCheck { -webkit-text-fill-color: transparent; background-image: linear-gradient(#3fae4c,#3fae4c); -webkit-background-clip: text; background-clip: text; }
+  #controlsList .disabledNote { -webkit-text-fill-color: transparent; background-image: linear-gradient(#d9433c,#d9433c); -webkit-background-clip: text; background-clip: text; }
+  #tooltip .trailerhint.blinkRed { -webkit-text-fill-color: transparent; background-image: linear-gradient(#ff4444,#ff4444); -webkit-background-clip: text; background-clip: text; }
+  .menuTab.active { -webkit-text-fill-color: transparent; background-image: linear-gradient(#1a0f08,#1a0f08), linear-gradient(#d8a84e,#d8a84e); -webkit-background-clip: text, border-box; background-clip: text, border-box; }
+  .smartLaunchOptOff { -webkit-text-fill-color: transparent; background-image: linear-gradient(#7a6650,#7a6650); -webkit-background-clip: text; background-clip: text; }
+  /* Chrome's default checkbox blue, set explicitly: an explicit accent-color
+     keeps checked boxes unchanged under that same forced dark mode. */
+  input[type="checkbox"] { accent-color: #0075ff; }
 </style></head>
 <body>
 <div id="hud">
@@ -1692,7 +1740,7 @@
   <label id="sensitivityLabel" style="margin:4px 0 2px">Look Sensitivity <span class="defaultHint" id="sensitivityDefaultHint"></span> — <span id="sensitivityValue">20%</span></label>
   <input type="range" id="sensitivitySlider" min="0" max="19" step="1" value="3" />
   <div class="subHead" style="margin-top:4px">Keyboard Navigation</div>
-  <label class="toggleRow" style="margin:3px 0"><input type="checkbox" id="cinemaKeyboardEnabledToggle" checked /> Enable Keyboard Commands <span style="color:#5a4c3c; font-size:9px;">(ENTER key when there is no menu or interactive object)</span> <span class="defaultHint" id="cinemaKeyboardEnabledDefaultHint"></span></label>
+  <label class="toggleRow" style="margin:3px 0"><input type="checkbox" id="cinemaKeyboardEnabledToggle" checked /> Enable Keyboard Commands <span class="darkTextKeep" style="color:#5a4c3c; font-size:9px;">(ENTER key when there is no menu or interactive object)</span> <span class="defaultHint" id="cinemaKeyboardEnabledDefaultHint"></span></label>
   <label id="cinemaKeyboardColorLabel" style="margin:4px 0 2px">Indicator Color <span class="defaultHint" id="cinemaKeyboardColorDefaultHint"></span></label>
   <input type="text" id="cinemaKeyboardColorInput" value="#00ff41" />
   <label id="cinemaKeyboardPositionLabel" style="margin:4px 0 2px">Indicator Position</label>
@@ -2844,6 +2892,31 @@ import * as THREE from '${THREE_CDN}';
   'use strict';
   const session = ${JSON.stringify(session)};
   const launchContext = ${JSON.stringify(launchContext)};
+  // Chrome/Edge's "Auto Dark Mode for Web Contents" recolors every border
+  // (whatever its colour) but leaves background images alone, so each
+  // stylesheet rule that sets a solid border colour gets the identical
+  // colour as a border-image as well -- pixel-identical in normal mode.
+  // Done here once, generically, so every state rule (hover, focus, active,
+  // invalid, gamepad focus) is covered without duplicating it by hand.
+  // Skipped: dashed/dotted borders (a border-image would turn them solid)
+  // and rounded ones (border-image ignores border-radius).
+  for (const sheet of document.styleSheets) {
+    let rules;
+    try { rules = sheet.cssRules; } catch (e) { continue; }
+    for (const rule of rules) {
+      const st = rule.style;
+      if (!st || st.getPropertyValue('border-radius')) continue;
+      const sides = ['top', 'right', 'bottom', 'left'];
+      const colors = sides.map((sd) => st.getPropertyValue('border-' + sd + '-color')).filter(Boolean);
+      if (!colors.length || colors.some((c) => c !== colors[0])) continue;
+      const styles = sides.map((sd) => st.getPropertyValue('border-' + sd + '-style')).filter(Boolean);
+      if (styles.some((v) => v !== 'solid')) continue;
+      const color = colors[0];
+      if (/^(currentcolor|initial|inherit|unset)$/i.test(color)) continue;
+      const priority = st.getPropertyPriority('border-top-color') || st.getPropertyPriority('border-bottom-color');
+      st.setProperty('border-image', color === 'transparent' ? 'none' : 'linear-gradient(' + color + ',' + color + ') 1', priority);
+    }
+  }
   // Ambient Mode — a custom, sequence-based Poster Effect: 3 independent
   // profiles (only ever one "active" at a time — the active one IS the
   // one being edited, no separate active-vs-editing state), each up to
@@ -6065,6 +6138,14 @@ import * as THREE from '${THREE_CDN}';
   };
   function applyCinemaConsoleIndicatorStyle() {
     cinemaConsoleIndicatorEl.style.color = cinemaKeyboardColor;
+    // Same background-clip:text protection as the dim texts in the
+    // stylesheet: a dark user-picked colour would otherwise be lightened by
+    // Chrome/Edge's forced dark mode. The second, empty layer keeps the
+    // panel's own background colour clipped to the box, not the text.
+    cinemaConsoleIndicatorEl.style.webkitTextFillColor = 'transparent';
+    cinemaConsoleIndicatorEl.style.backgroundImage = 'linear-gradient(' + cinemaKeyboardColor + ',' + cinemaKeyboardColor + '), linear-gradient(transparent,transparent)';
+    cinemaConsoleIndicatorEl.style.webkitBackgroundClip = 'text, border-box';
+    cinemaConsoleIndicatorEl.style.backgroundClip = 'text, border-box';
     const c = CINEMA_CONSOLE_POSITIONS[cinemaKeyboardPosition] || CINEMA_CONSOLE_POSITIONS['top-center'];
     cinemaConsoleIndicatorEl.style.top = c.top;
     cinemaConsoleIndicatorEl.style.left = c.left;
@@ -13556,7 +13637,7 @@ import * as THREE from '${THREE_CDN}';
       ? 'color:#d8a84e; font-weight:600;'
       : 'color:#7a6650;';
     const defaultTag = active ? ' <span class="defaultHint">(default)</span>' : '';
-    return '<div style="' + style + ' padding:1px 0;">' + (active ? '● ' : '○ ') + opt.label + defaultTag + '</div>';
+    return '<div' + (active ? '' : ' class="smartLaunchOptOff"') + ' style="' + style + ' padding:1px 0;">' + (active ? '● ' : '○ ') + opt.label + defaultTag + '</div>';
   }).join('');
   const hideUnavailableToggle = document.getElementById('hideUnavailableToggle');
   hideUnavailableToggle.checked = hideUnavailableItems;
@@ -14383,6 +14464,64 @@ import * as THREE from '${THREE_CDN}';
   const MOUSE_WHEEL_ICON = '<svg width="14" height="18" viewBox="0 0 14 18" style="vertical-align:-4px;margin:0 2px;"><path d="M7 1 C3 1 1 3.5 1 7 V12 C1 15.5 3.5 17 7 17 C10.5 17 13 15.5 13 12 V7 C13 3.5 10.5 1 7 1 Z" fill="#2a1a12" stroke="#c9974a" stroke-width="1"/><rect x="5.5" y="5" width="3" height="5" rx="1.5" fill="#c9974a"/></svg>';
   const GP_MENU = '<svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:-3px;margin:0 2px;"><circle cx="8" cy="8" r="7" fill="#2a1a12" stroke="#c9974a" stroke-width="1"/><rect x="4" y="5" width="8" height="1.4" rx="0.7" fill="#f0e2c8"/><rect x="4" y="7.3" width="8" height="1.4" rx="0.7" fill="#f0e2c8"/><rect x="4" y="9.6" width="8" height="1.4" rx="0.7" fill="#f0e2c8"/></svg>';
   const GP_VIEW = '<svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:-3px;margin:0 2px;"><circle cx="8" cy="8" r="7" fill="#2a1a12" stroke="#c9974a" stroke-width="1"/><rect x="4.5" y="4.5" width="5" height="5" rx="0.8" fill="none" stroke="#f0e2c8" stroke-width="1.2"/><rect x="7" y="7" width="5" height="5" rx="0.8" fill="#2a1a12" stroke="#f0e2c8" stroke-width="1.2"/></svg>';
+  // Browser-side dark modes rewrite the colors of inline SVG: Chrome/Edge's
+  // "Auto Dark Mode for Web Contents" flag and the Dark Reader extension
+  // both turn the dark key fill (#2a1a12) light while the light key label
+  // (#f0e2c8) stays light, so every key renders as a blank bright box and
+  // the mouse glyph as a bright blob. Neither touches <canvas> pixels, and
+  // Chrome's flag ignores every page-level opt-out (color-scheme: only
+  // light / dark were both tested without effect) — so every icon SVG that
+  // lands in the controls bar, the tooltip, or the controls list is drawn
+  // into a <canvas> of the same size instead. The svg* helpers above stay
+  // the single source of every icon's look; only the final element
+  // changes. The SVG stays in place until its image has loaded, so nothing
+  // ever flashes empty, and a failed load simply leaves the SVG as-is.
+  const overlayIconImageCache = new Map();
+  function rasterizeOverlayIcons(root) {
+    root.querySelectorAll('svg').forEach((svgEl) => {
+      if (svgEl.__ccRasterPending) return;
+      const w = parseFloat(svgEl.getAttribute('width'));
+      const h = parseFloat(svgEl.getAttribute('height'));
+      if (!w || !h) return;
+      svgEl.__ccRasterPending = true;
+      const clone = svgEl.cloneNode(true);
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      clone.removeAttribute('style');
+      // Inline SVG <text> inherits letter-spacing from its container (the
+      // bar sets 1px); an SVG drawn as an image inherits nothing, so the
+      // computed value is carried over explicitly to keep labels identical.
+      const letterSpacing = getComputedStyle(svgEl).letterSpacing;
+      if (letterSpacing && letterSpacing !== 'normal') clone.setAttribute('letter-spacing', letterSpacing);
+      const markup = new XMLSerializer().serializeToString(clone);
+      let img = overlayIconImageCache.get(markup);
+      if (!img) {
+        img = new Image();
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markup);
+        overlayIconImageCache.set(markup, img);
+      }
+      const swap = () => {
+        if (!svgEl.isConnected) return;
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(w * dpr);
+        canvas.height = Math.ceil(h * dpr);
+        canvas.style.cssText = svgEl.getAttribute('style') || '';
+        // The page's global "canvas { display: block; }" rule (meant for the
+        // WebGL canvas) would otherwise stack every icon on its own line;
+        // inline is what the replaced <svg> itself rendered as.
+        if (!canvas.style.display) canvas.style.display = 'inline';
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        canvas.getContext('2d').drawImage(img, 0, 0, w * dpr, h * dpr);
+        svgEl.replaceWith(canvas);
+      };
+      if (img.complete && img.naturalWidth) swap();
+      else img.addEventListener('load', swap, { once: true });
+    });
+  }
+  [instructionsEl, tooltipEl, document.getElementById('controlsList')].forEach((el) => {
+    new MutationObserver(() => rasterizeOverlayIcons(el)).observe(el, { childList: true, subtree: true });
+  });
   function baseInstructions() {
     if (cinemaConsoleActive) {
       // Keyboard-only by design — the gamepad's own primary-action button
@@ -16480,5 +16619,8 @@ import * as THREE from '${THREE_CDN}';
             btn.classList.remove('jf-cinema-loading');
         }
     }
-    if (ccIsSupportedPlatform()) waitForHeader();
+    if (ccIsSupportedPlatform()) {
+        if (IS_EXPERIMENTAL_LAYOUT) waitForExperimentalToolbar();
+        else waitForHeader();
+    }
 })();
