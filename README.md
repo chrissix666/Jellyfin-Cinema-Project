@@ -1,3 +1,7 @@
+[Jellyfin Projects](https://linktr.ee/JellyfinProjects) | [Kodi Projects](https://linktr.ee/KodiProjects)
+
+---
+
 <img src="logo.png" width="100%">
 
 *Not affiliated with or endorsed by Jellyfin.*
