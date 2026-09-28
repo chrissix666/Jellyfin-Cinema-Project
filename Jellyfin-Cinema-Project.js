@@ -4,7 +4,7 @@
     const BUTTON_ID = 'jf-cinema-btn';
     const HEADER_SELECTOR = '.headerRight';
     const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js';
-    const SCRIPT_VERSION = '19.93';
+    const SCRIPT_VERSION = '19.94';
     // Cinema Project needs a real desktop browser -- WebGL2/three.js,
     // mouse-driven look controls, a keyboard console. None of that
     // works on a phone, tablet, or TV, so the button (and therefore
@@ -83,7 +83,7 @@
     //     sits just above the first of the two)
     //   - 'const MENU_CONFIG = {'
     // If asked for a specific line range as of right now: as of
-    // SCRIPT_VERSION 19.93, SMART_LAUNCH_CONFIG is at lines 226–240, the
+    // SCRIPT_VERSION 19.94, SMART_LAUNCH_CONFIG is at lines 226–240, the
     // two Ambient blocks together are at lines 3012–3069, and
     // MENU_CONFIG is at lines 3190–3474 — but treat these as a
     // snapshot, not a guarantee; re-locate by the search text above if
