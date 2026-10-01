@@ -84,8 +84,8 @@
     //   - 'const MENU_CONFIG = {'
     // If asked for a specific line range as of right now: as of
     // SCRIPT_VERSION 19.94, SMART_LAUNCH_CONFIG is at lines 226–240, the
-    // two Ambient blocks together are at lines 3012–3069, and
-    // MENU_CONFIG is at lines 3190–3474 — but treat these as a
+    // two Ambient blocks together are at lines 3033–3090, and
+    // MENU_CONFIG is at lines 3211–3495 — but treat these as a
     // snapshot, not a guarantee; re-locate by the search text above if
     // the version number has changed since.
     //
@@ -1340,20 +1340,26 @@
         if (document.getElementById('jf-cinema-style')) return;
         const style = document.createElement('style');
         style.id = 'jf-cinema-style';
+        // The classic header button carries Jellyfin's own classes, so its
+        // look comes from Jellyfin's stylesheet; only the Experimental (MUI)
+        // variant is styled here, as MUI's <IconButton size='large'
+        // color='inherit'>: 1.5rem icon, translucent white hover, 150 ms fade.
         style.textContent = `
-            .${ICON_CLASS} { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; font-size:24px; display:inline-block; vertical-align:middle; }
-            #${BUTTON_ID} { background:transparent; border:none; padding:4px; margin:0 2px; cursor:pointer; color:inherit; }
-            #${BUTTON_ID}:hover { background:rgba(255,255,255,0.1); border-radius:4px; }
-            #${BUTTON_ID}.jf-cinema-loading .${ICON_CLASS} { opacity:0.5; }
-            #${BUTTON_ID}.jf-cinema-mui { display:inline-flex; padding:12px; margin:0; border-radius:50%; }
-            #${BUTTON_ID}.jf-cinema-mui:hover { border-radius:50%; }
+            #${BUTTON_ID}.jf-cinema-loading .${ICON_CLASS}, #${BUTTON_ID}.jf-cinema-loading .material-icons { opacity:0.5; }
+            #${BUTTON_ID}.jf-cinema-mui { display:inline-flex; align-items:center; justify-content:center; position:relative; box-sizing:border-box; flex:0 0 auto; padding:12px; margin:0; border:0; border-radius:50%; background-color:transparent; color:inherit; font-size:1.75rem; cursor:pointer; outline:0; vertical-align:middle; -webkit-tap-highlight-color:transparent; transition:background-color 150ms cubic-bezier(0.4, 0, 0.2, 1) 0ms; }
+            #${BUTTON_ID}.jf-cinema-mui .${ICON_CLASS} { width:1.5rem; height:1.5rem; }
+            @media (hover:hover) { #${BUTTON_ID}.jf-cinema-mui:hover { background-color:var(--jf-mui-hover, rgba(255, 255, 255, 0.08)); } }
         `;
         document.head.appendChild(style);
     }
-    function buildCinemaButton() {
+    function buildCinemaButton(mui) {
         const btn = document.createElement('button');
+        btn.type = 'button';
         btn.id = BUTTON_ID;
-        btn.className = 'headerButton';
+        // Classic header: the same classes as Jellyfin's own header buttons
+        // (SyncPlay, Cast, Search), so size, round hover/active highlight and
+        // colour come from Jellyfin's stylesheet and the active theme, 1:1.
+        btn.className = mui ? 'headerButton jf-cinema-mui' : 'headerButton headerButtonRight paper-icon-button-light';
         btn.title = 'Cinema';
         // Inline copy of Google's Material Symbols "cinematic_blur" (Outlined,
         // FILL 0 / wght 400 / GRAD 0 / opsz 24 -- the exact axes the icon font
@@ -1362,7 +1368,13 @@
         // unreachable (ad/DNS blockers, a server without internet access, a
         // reverse-proxy CSP) the button showed the raw ligature text
         // "cinematic_blur" instead of the icon.
-        btn.innerHTML = '<svg class="' + ICON_CLASS + '" width="24" height="24" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="m160-840 80 160h120l-80-160h80l80 160h120l-80-160h80l80 160h120l-80-160h120q33 0 56.5 23.5T880-760v560q0 33-23.5 56.5T800-120H160q-33 0-56.5-23.5T80-200v-560q0-33 23.5-56.5T160-840Zm0 240v400h640v-400H160Zm0 0v400-400Zm160 360h320v-22q0-44-44-71t-116-27q-72 0-116 27t-44 71v22Zm160-160q33 0 56.5-23.5T560-480q0-33-23.5-56.5T480-560q-33 0-56.5 23.5T400-480q0 33 23.5 56.5T480-400Z"/></svg>';
+        // Sized 1em inside a .material-icons span (classic header), so the
+        // icon follows the font size Jellyfin gives its own header icons
+        // (.paper-icon-button-light > .material-icons). No ICON_CLASS there:
+        // other header scripts (Autoscroll, older Fullscreen) set a global
+        // ".material-symbols-outlined { font-size:24px }" that would pin it.
+        const svg = '<svg' + (mui ? ' class="' + ICON_CLASS + '"' : '') + ' width="' + (mui ? '24' : '1em') + '" height="' + (mui ? '24' : '1em') + '" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"' + (mui ? '' : ' style="display:block"') + '><path d="m160-840 80 160h120l-80-160h80l80 160h120l-80-160h80l80 160h120l-80-160h120q33 0 56.5 23.5T880-760v560q0 33-23.5 56.5T800-120H160q-33 0-56.5-23.5T80-200v-560q0-33 23.5-56.5T160-840Zm0 240v400h640v-400H160Zm0 0v400-400Zm160 360h320v-22q0-44-44-71t-116-27q-72 0-116 27t-44 71v22Zm160-160q33 0 56.5-23.5T560-480q0-33-23.5-56.5T480-560q-33 0-56.5 23.5T400-480q0 33 23.5 56.5T480-400Z"/></svg>';
+        btn.innerHTML = mui ? svg : '<span class="material-icons" aria-hidden="true">' + svg + '</span>';
         btn.addEventListener('click', () => openCinemaInNewTab(btn));
         return btn;
     }
@@ -1409,9 +1421,18 @@
         const existing = document.getElementById(BUTTON_ID);
         if (existing && existing.parentElement === box) return;
         if (existing) existing.remove();
-        const btn = buildCinemaButton();
-        btn.classList.add('jf-cinema-mui');
+        const btn = buildCinemaButton(true);
+        btn.style.setProperty('--jf-mui-hover', getMuiHoverColor());
         box.prepend(btn);
+    }
+    // Hover tint of Jellyfin's own toolbar buttons (MUI IconButton,
+    // color 'inherit'): palette.action.active at action.hoverOpacity, i.e.
+    // white 8 % in the dark MUI themes, black 4 % in Light and Apple TV.
+    // The theme link's attribute is relative ("themes/dark/theme.css"), so
+    // the selector must not require a leading slash; link.href is absolute.
+    function getMuiHoverColor() {
+        const link = document.querySelector('link[href*="themes/"][href$="theme.css"]');
+        return link && /\/themes\/(light|appletv)\//.test(link.href) ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.08)';
     }
     function waitForExperimentalToolbar() {
         const interval = setInterval(() => {
