@@ -1,10 +1,217 @@
 (function () {
     'use strict';
-    const ICON_CLASS = 'material-symbols-outlined';
+
+    /* jfcompat 1.0 - one script for Jellyfin web 10.10.7 and 12.1.
+     * Paste this block unchanged at the top of a script (inside its IIFE).
+     * It is pure: no side effects at load, no globals except window.jfcompat
+     * (set only when absent, for console checks; scripts use the local const).
+     * Rule: on 10.10.7 every answer equals what the scripts computed before. */
+    const jfcompat = (function () {
+        'use strict';
+        const VERSION = '1.0';
+
+        // ---------- version ----------
+        // The web client ships with the server, so the server version decides.
+        // ApiClient.appVersion() is not used: inside Jellyfin Media Player or the
+        // Android app NativeShell replaces it with the app's own number
+        // (apphost.js 10.10.7:417-419, 12.1:399-401).
+        // Before ApiClient knows the server, <html data-theme> is a 12.x-only hint
+        // (12.1 scripts/themeManager.js:46; 10.10.7 never sets it).
+        function serverVersion() {
+            try {
+                const api = window.ApiClient;
+                const v = api && typeof api.serverVersion === 'function' && api.serverVersion();
+                if (v) {
+                    const [major, minor] = String(v).split('.').map(Number);
+                    return { major: major, minor: minor || 0, raw: String(v) };
+                }
+            } catch (e) { /* ignore */ }
+            return null;
+        }
+        // 12.x model: modern layout default, routes without .html, legacy auth off.
+        // 10.11 was not audited; treated as the new model (live-check before relying on it).
+        function isNewModel() {
+            const v = serverVersion();
+            if (v) return v.major > 10 || (v.major === 10 && v.minor >= 11);
+            return document.documentElement.hasAttribute('data-theme');
+        }
+
+        // ---------- routes ----------
+        // getRoute(): { name, params } with '#!' and '.html' removed, so one name
+        // fits both: home, movies, tv, list, search, details, video, music, livetv ...
+        function getRoute() {
+            const h = window.location.hash || '';
+            const m = /^#!?\/([^?]*)(?:\?(.*))?$/.exec(h);
+            const name = m ? m[1].replace(/\.html$/i, '').toLowerCase() : '';
+            return { name: name, params: new URLSearchParams(m && m[2] ? m[2] : '') };
+        }
+        function isRoute() {
+            const n = getRoute().name;
+            for (let i = 0; i < arguments.length; i++) if (arguments[i] === n) return true;
+            return false;
+        }
+        // routeUrl('list', {parentId}) -> '#/list.html?...' on 10.10.7, '#/list?...' on 12.1.
+        // details and video never had '.html' (10.10.7 appRouter.js:447,472).
+        const NO_SUFFIX = ['details', 'video', ''];
+        function routeUrl(name, params) {
+            const q = params ? new URLSearchParams(params).toString() : '';
+            const suffix = (!isNewModel() && NO_SUFFIX.indexOf(name) < 0) ? '.html' : '';
+            return '#/' + name + suffix + (q ? '?' + q : '');
+        }
+        // Navigate inside the app (no reload). Emby.Page.show strips '#' and '!'
+        // in both versions (appRouter.js 10.10.7:516, 12.1:552).
+        function go(name, params) {
+            const url = routeUrl(name, params);
+            if (window.Emby && window.Emby.Page && typeof window.Emby.Page.show === 'function') {
+                window.Emby.Page.show(url.slice(1));
+            } else {
+                window.location.hash = url;
+            }
+        }
+
+        // ---------- layout ----------
+        // 10.10.7: MUI only when localStorage.layout === 'experimental' (RootAppRouter.tsx:19-20).
+        // 12.1:    classic only for desktop-legacy | mobile-legacy | tv
+        //          (constants/layoutMode.ts, layoutManager.js:41); everything else,
+        //          including a stale 'experimental', is MUI.
+        // Both versions pick the layout once per page load, so the DOM answer is cached.
+        const LEGACY_12 = ['desktop-legacy', 'mobile-legacy', 'tv'];
+        const MUI_SEARCH = '.MuiAppBar-root a[href^="#/search"]';
+        let cachedLayout = null;
+        function getLayout() {
+            if (cachedLayout) return cachedLayout;
+            // 1) what the page shows (not on the video route: 12.1 draws an osdHeader there;
+            //    not on dashboard pages: there the classic header is hidden in both layouts)
+            if (getRoute().name !== 'video') {
+                if (document.querySelector(MUI_SEARCH)) return (cachedLayout = 'mui');
+                const sk = document.querySelector('.skinHeader:not(.osdHeader)');
+                // .skinHeader is position:fixed, so offsetParent is always null; a
+                // display:none ancestor (AppHeader isHidden) leaves it without client rects.
+                if (sk && sk.getClientRects().length > 0 && sk.querySelector('.headerRight')) return (cachedLayout = 'classic');
+            }
+            // 2) the setting, read the way each version reads it (not cached)
+            let v = '';
+            try { v = localStorage.getItem('layout') || ''; } catch (e) { /* ignore */ }
+            if (isNewModel()) return LEGACY_12.indexOf(v) >= 0 ? 'classic' : 'mui';
+            return v === 'experimental' ? 'mui' : 'classic';
+        }
+        function isMui() { return getLayout() === 'mui'; }
+
+        // ---------- header ----------
+        // MUI: the search link sits in the right-hand button box with SyncPlay and
+        // RemotePlay (components/toolbar/AppToolbar.tsx:84-85, both versions).
+        // Its href is '#/search.html' on 10.10.7 and '#/search' on 12.1.
+        // Classic: only a SHOWN header counts. 12.1 keeps the hidden classic header
+        // in the DOM in the modern layout (AppHeader.tsx:20), and both versions hide
+        // it on dashboard pages; a button placed there would never be seen.
+        function isShown(el) { return !!el && el.getClientRects().length > 0; }
+        function getSearchLink() {
+            if (isMui()) return document.querySelector(MUI_SEARCH);
+            const b = document.querySelector('.skinHeader:not(.osdHeader) .headerRight .headerSearchButton');
+            return isShown(b) ? b : null;
+        }
+        function getHeaderBox() {
+            if (isMui()) { const a = document.querySelector(MUI_SEARCH); return a ? a.parentElement : null; }
+            const box = document.querySelector('.skinHeader:not(.osdHeader) .headerRight');
+            return isShown(box) ? box : null;
+        }
+        // cb(box | null) whenever the box may have changed (the MUI toolbar unmounts
+        // on /video and has no buttons on public pages). setTimeout, not rAF, so it
+        // also runs in background tabs.
+        function onHeaderBoxChange(cb) {
+            let queued = false;
+            const run = function () { queued = false; cb(getHeaderBox()); };
+            const start = function () {
+                if (!document.body) { setTimeout(start, 200); return; }
+                run();
+                new MutationObserver(function () {
+                    if (!queued) { queued = true; setTimeout(run, 50); }
+                }).observe(document.body, { childList: true, subtree: true });
+            };
+            start();
+        }
+
+        // ---------- theme ----------
+        function getThemeId() {
+            const d = document.documentElement.getAttribute('data-theme');          // 12.1
+            if (d) return d;
+            const link = document.querySelector('link[href*="themes/"][href$="theme.css"]'); // both
+            const m = link && /themes\/([^/]+)\/theme\.css/.exec(link.getAttribute('href') || '');
+            return m ? m[1] : 'dark';
+        }
+        // MUI IconButton (color inherit) hover = action.active at action.hoverOpacity.
+        // 12.1 exposes it as CSS variables (themes/index.ts, prefix 'jf'); the
+        // fallbacks are the 10.10.7 values (dark 8 % white, light/appletv 4 % black).
+        function getMuiHoverColor() {
+            const old = /^(light|appletv)$/.test(getThemeId()) ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.08)';
+            if (!document.documentElement.hasAttribute('data-theme')) return old;
+            const cs = getComputedStyle(document.documentElement);
+            const ch = cs.getPropertyValue('--jf-palette-action-activeChannel').trim();
+            const op = cs.getPropertyValue('--jf-palette-action-hoverOpacity').trim();
+            return (ch && op) ? 'rgba(' + ch + ' / ' + op + ')' : old;
+        }
+
+        // ---------- auth for raw fetch ----------
+        // 12.1 ignores X-Emby-Token, X-MediaBrowser-Token, X-Emby-Authorization and
+        // ?api_key= unless EnableLegacyAuthorization (AuthorizationContext.cs:93-110).
+        // The Authorization header and ?ApiKey= work in both versions.
+        function accessToken() {
+            try {
+                const api = window.ApiClient;
+                const t = api && typeof api.accessToken === 'function' && api.accessToken();
+                if (t) return t;
+            } catch (e) { /* ignore */ }
+            try {
+                const c = JSON.parse(localStorage.getItem('jellyfin_credentials') || '{}');
+                const s = (c.Servers || []).find(function (x) { return x.AccessToken; });
+                return s ? s.AccessToken : null;
+            } catch (e) { return null; }
+        }
+        function authHeaders(extra) {
+            const h = Object.assign({}, extra || {});
+            const t = accessToken();
+            if (t) h.Authorization = 'MediaBrowser Token="' + t + '"';
+            return h;
+        }
+        // Adds ?ApiKey=<token> to a URL that cannot carry a header (img src, download link).
+        function withApiKey(url) {
+            const t = accessToken();
+            if (!t) return url;
+            return url + (url.indexOf('?') < 0 ? '?' : '&') + 'ApiKey=' + encodeURIComponent(t);
+        }
+
+        // ---------- pages ----------
+        // React library pages in the 12.1 modern layout (apps/modern/routes/asyncRoutes/user.ts).
+        // In 10.10.7 'experimental' some of these were React too; live-check before reuse there.
+        const REACT_LIBRARY_ROUTES = ['movies', 'tv', 'music', 'livetv', 'boxsets', 'homevideos',
+            'musicvideos', 'mixed', 'books', 'playlists', 'home'];
+        function isReactLibraryPage() {
+            return isNewModel() && isMui() && REACT_LIBRARY_ROUTES.indexOf(getRoute().name) >= 0;
+        }
+
+        // ---------- video OSD ----------
+        // Legacy view in both (10.10.7 controllers/playback/video/index.html:30;
+        // 12.1 apps/legacy/controllers/playback/video/index.html:30).
+        function getOsdBar() {
+            return document.querySelector('.videoOsdBottom .osdControls .buttons');
+        }
+
+        const api = {
+            VERSION: VERSION, serverVersion: serverVersion, isNewModel: isNewModel,
+            getRoute: getRoute, isRoute: isRoute, routeUrl: routeUrl, go: go,
+            getLayout: getLayout, isMui: isMui,
+            getSearchLink: getSearchLink, getHeaderBox: getHeaderBox, onHeaderBoxChange: onHeaderBoxChange,
+            getThemeId: getThemeId, getMuiHoverColor: getMuiHoverColor,
+            accessToken: accessToken, authHeaders: authHeaders, withApiKey: withApiKey,
+            isReactLibraryPage: isReactLibraryPage, getOsdBar: getOsdBar
+        };
+        if (!window.jfcompat) window.jfcompat = api;
+        return api;
+    })();
+    /* end jfcompat 1.0 */
     const BUTTON_ID = 'jf-cinema-btn';
-    const HEADER_SELECTOR = '.headerRight';
     const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js';
-    const SCRIPT_VERSION = '19.94';
+    const SCRIPT_VERSION = '20.0';
     // Cinema Project needs a real desktop browser -- WebGL2/three.js,
     // mouse-driven look controls, a keyboard console. None of that
     // works on a phone, tablet, or TV, so the button (and therefore
@@ -83,15 +290,15 @@
     //     sits just above the first of the two)
     //   - 'const MENU_CONFIG = {'
     // If asked for a specific line range as of right now: as of
-    // SCRIPT_VERSION 19.94, SMART_LAUNCH_CONFIG is at lines 226–240, the
-    // two Ambient blocks together are at lines 3033–3090, and
-    // MENU_CONFIG is at lines 3211–3495 — but treat these as a
+    // SCRIPT_VERSION 20.0, SMART_LAUNCH_CONFIG is at lines 433–447, the
+    // two Ambient blocks together are at lines 3239–3296, and
+    // MENU_CONFIG is at lines 3417–3701 — but treat these as a
     // snapshot, not a guarantee; re-locate by the search text above if
     // the version number has changed since.
     //
     // A FOURTH block, EFFECTIVE_SMART_LAUNCH (search for
     // 'const EFFECTIVE_SMART_LAUNCH = {'), sits directly after
-    // SMART_LAUNCH_CONFIG's own closing '};' — at lines 261–275 as of
+    // SMART_LAUNCH_CONFIG's own closing '};' — at lines 468–482 as of
     // this same SCRIPT_VERSION. It is NOT one of the three script blocks
     // the workbook mirrors values into/out of either — it is the plugin-
     // persistence resolution layer (admin-set value if present, else
@@ -101,7 +308,7 @@
     //
     // A FIFTH block, EFFECTIVE_MENU_CONFIG (search for
     // 'const EFFECTIVE_MENU_CONFIG = {'), sits directly after
-    // EFFECTIVE_SMART_LAUNCH's own closing '};' — at lines 315–1228 as
+    // EFFECTIVE_SMART_LAUNCH's own closing '};' — at lines 522–1435 as
     // of this same SCRIPT_VERSION (by far the largest of the six blocks
     // now — 690 of its 817 total fields are Ambient Mode's own
     // per-sequence data, 3 profiles x 10 sequences x 23 fields each).
@@ -125,7 +332,7 @@
     //
     // A SIXTH block, SPREADSHEET_DEPENDENCY_RULES (search for
     // 'const SPREADSHEET_DEPENDENCY_RULES = {'), sits directly after
-    // EFFECTIVE_MENU_CONFIG's own closing '};' — at lines 1270–1338 as of
+    // EFFECTIVE_MENU_CONFIG's own closing '};' — at lines 1477–1545 as of
     // this same SCRIPT_VERSION. It is NOT one of the three script blocks
     // the workbook mirrors values into/out of — Cinema Project's own
     // runtime never reads it — but if the workbook's own build tooling
@@ -1341,25 +1548,35 @@
         const style = document.createElement('style');
         style.id = 'jf-cinema-style';
         // The classic header button carries Jellyfin's own classes, so its
-        // look comes from Jellyfin's stylesheet; only the Experimental (MUI)
-        // variant is styled here, as MUI's <IconButton size='large'
-        // color='inherit'>: 1.5rem icon, translucent white hover, 150 ms fade.
+        // look comes from Jellyfin's stylesheet; only the MUI variant
+        // (Experimental layout in 10.10.x, the default "modern" layout in
+        // 12.x) is styled here, as MUI's <IconButton size="large"
+        // color="inherit"> (@mui/material 5.16.7): 12px padding around a
+        // 1.5rem icon (SvgIcon 'medium'), round, icon keeps the toolbar
+        // colour, 150 ms hover fade. Same rules as the Random, Autoscroll and
+        // Fullscreen header buttons.
         style.textContent = `
-            #${BUTTON_ID}.jf-cinema-loading .${ICON_CLASS}, #${BUTTON_ID}.jf-cinema-loading .material-icons { opacity:0.5; }
-            #${BUTTON_ID}.jf-cinema-mui { display:inline-flex; align-items:center; justify-content:center; position:relative; box-sizing:border-box; flex:0 0 auto; padding:12px; margin:0; border:0; border-radius:50%; background-color:transparent; color:inherit; font-size:1.75rem; cursor:pointer; outline:0; vertical-align:middle; -webkit-tap-highlight-color:transparent; transition:background-color 150ms cubic-bezier(0.4, 0, 0.2, 1) 0ms; }
-            #${BUTTON_ID}.jf-cinema-mui .${ICON_CLASS} { width:1.5rem; height:1.5rem; }
-            @media (hover:hover) { #${BUTTON_ID}.jf-cinema-mui:hover { background-color:var(--jf-mui-hover, rgba(255, 255, 255, 0.08)); } }
+            #${BUTTON_ID}.jf-cinema-loading .material-icons { opacity:0.5; }
+            #${BUTTON_ID}.jf-mui-header-btn {
+                display:inline-flex; align-items:center; justify-content:center;
+                position:relative; box-sizing:border-box; flex:0 0 auto;
+                padding:12px; margin:0; border:0; border-radius:50%;
+                background-color:transparent; color:inherit; font-size:1.75rem;
+                cursor:pointer; outline:0; vertical-align:middle;
+                -webkit-tap-highlight-color:transparent;
+                transition:background-color 150ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+            }
+            #${BUTTON_ID}.jf-mui-header-btn > .material-icons { font-size:1.5rem; line-height:1; }
+            @media (hover: hover) {
+                #${BUTTON_ID}.jf-mui-header-btn:hover { background-color:var(--jf-mui-hover, rgba(255, 255, 255, 0.08)); }
+            }
         `;
         document.head.appendChild(style);
     }
-    function buildCinemaButton(mui) {
+    function buildCinemaButton() {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.id = BUTTON_ID;
-        // Classic header: the same classes as Jellyfin's own header buttons
-        // (SyncPlay, Cast, Search), so size, round hover/active highlight and
-        // colour come from Jellyfin's stylesheet and the active theme, 1:1.
-        btn.className = mui ? 'headerButton jf-cinema-mui' : 'headerButton headerButtonRight paper-icon-button-light';
         btn.title = 'Cinema';
         // Inline copy of Google's Material Symbols "cinematic_blur" (Outlined,
         // FILL 0 / wght 400 / GRAD 0 / opsz 24 -- the exact axes the icon font
@@ -1368,80 +1585,69 @@
         // unreachable (ad/DNS blockers, a server without internet access, a
         // reverse-proxy CSP) the button showed the raw ligature text
         // "cinematic_blur" instead of the icon.
-        // Sized 1em inside a .material-icons span (classic header), so the
-        // icon follows the font size Jellyfin gives its own header icons
-        // (.paper-icon-button-light > .material-icons). No ICON_CLASS there:
-        // other header scripts (Autoscroll, older Fullscreen) set a global
+        // Sized 1em inside a .material-icons span, so the icon follows the
+        // font size Jellyfin gives its own header icons in either layout.
+        // No 'material-symbols-outlined' class on it: other header scripts (older Autoscroll and
+        // Fullscreen versions) set a global
         // ".material-symbols-outlined { font-size:24px }" that would pin it.
-        const svg = '<svg' + (mui ? ' class="' + ICON_CLASS + '"' : '') + ' width="' + (mui ? '24' : '1em') + '" height="' + (mui ? '24' : '1em') + '" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"' + (mui ? '' : ' style="display:block"') + '><path d="m160-840 80 160h120l-80-160h80l80 160h120l-80-160h80l80 160h120l-80-160h120q33 0 56.5 23.5T880-760v560q0 33-23.5 56.5T800-120H160q-33 0-56.5-23.5T80-200v-560q0-33 23.5-56.5T160-840Zm0 240v400h640v-400H160Zm0 0v400-400Zm160 360h320v-22q0-44-44-71t-116-27q-72 0-116 27t-44 71v22Zm160-160q33 0 56.5-23.5T560-480q0-33-23.5-56.5T480-560q-33 0-56.5 23.5T400-480q0 33 23.5 56.5T480-400Z"/></svg>';
-        btn.innerHTML = mui ? svg : '<span class="material-icons" aria-hidden="true">' + svg + '</span>';
+        btn.innerHTML = '<span class="material-icons" aria-hidden="true"><svg width="1em" height="1em" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true" style="display:block"><path d="m160-840 80 160h120l-80-160h80l80 160h120l-80-160h80l80 160h120l-80-160h120q33 0 56.5 23.5T880-760v560q0 33-23.5 56.5T800-120H160q-33 0-56.5-23.5T80-200v-560q0-33 23.5-56.5T160-840Zm0 240v400h640v-400H160Zm0 0v400-400Zm160 360h320v-22q0-44-44-71t-116-27q-72 0-116 27t-44 71v22Zm160-160q33 0 56.5-23.5T560-480q0-33-23.5-56.5T480-560q-33 0-56.5 23.5T400-480q0 33 23.5 56.5T480-400Z"/></svg></span>';
         btn.addEventListener('click', () => openCinemaInNewTab(btn));
         return btn;
     }
-    function createButton() {
-        const header = document.querySelector(HEADER_SELECTOR);
-        if (!header || document.getElementById(BUTTON_ID)) return;
-        const btn = buildCinemaButton();
-        const anchor =
-            document.getElementById('jf-fullscreen-btn') ||
-            document.getElementById('jf-scroll-btn') ||
-            document.getElementById('randomMovieButtonContainer');
-        if (anchor) {
-            header.insertBefore(btn, anchor.nextSibling);
-        } else {
-            header.prepend(btn);
+    // Classic header (.headerRight) or the MUI toolbar: Experimental layout
+    // in 10.10.x, the default ("modern") layout in 12.x. jfcompat decides
+    // from what the page shows, so the choice is made each time the header
+    // box may have changed, not once at load (12.x keeps a hidden classic
+    // header in the DOM, and its version is not known that early).
+
+    // Left-to-right order of the custom header buttons (Random, Autoscroll,
+    // Fullscreen, Cinema), so they line up the same in both layouts no
+    // matter which script runs first.
+    const HEADER_BUTTON_ORDER = ['randomMovieButton', 'jf-scroll-btn', 'jf-fullscreen-btn', 'jf-cinema-btn'];
+
+    // In the classic header Random sits in its own wrapper div.
+    function headerButtonRank(el) {
+        return el.id === 'randomMovieButtonContainer' ? 0 : HEADER_BUTTON_ORDER.indexOf(el.id);
+    }
+
+    // Puts el into box right before the first element that belongs after
+    // it: a Jellyfin button or a custom button later in the order.
+    function placeInOrder(box, el) {
+        const myRank = headerButtonRank(el);
+        let ref = null;
+        for (const child of box.children) {
+            if (child === el) continue;
+            const rank = headerButtonRank(child);
+            if (rank === -1 || rank > myRank) { ref = child; break; }
         }
+        if (el.parentElement !== box || el.nextElementSibling !== ref) box.insertBefore(el, ref);
     }
-    function waitForHeader() {
-        const interval = setInterval(() => {
-            if (document.querySelector(HEADER_SELECTOR)) {
-                clearInterval(interval);
-                injectStyle();
-                createButton();
-            }
-        }, 200);
-    }
-    // jellyfin-web's Experimental layout never shows the legacy header:
-    // RootAppRouter keeps it in the DOM (legacy views still touch it) but
-    // wraps it in display:none, so a button placed in .headerRight exists
-    // yet is never visible. Its own RootAppRouter decides the layout once
-    // per page load from this exact localStorage key (a layout change only
-    // applies after a reload), so reading it once here matches it exactly.
-    // That layout's toolbar is a React/MUI AppBar whose right-hand buttons
-    // share one flex box with the Search button — always a link to
-    // search.html — so that link's parent is where the button goes. The
-    // toolbar unmounts entirely on the video player route and renders no
-    // buttons at all on login/server-select pages, so the button is
-    // re-added whenever the box (re)appears.
-    const IS_EXPERIMENTAL_LAYOUT = localStorage.getItem('layout') === 'experimental';
-    function createExperimentalButton() {
-        const searchLink = document.querySelector('.MuiAppBar-root a[href*="search.html"]');
-        const box = searchLink && searchLink.parentElement;
+
+    // Called whenever the header box may have changed (the MUI toolbar
+    // unmounts on the video route and has no buttons on the login/server
+    // pages); jfcompat batches the DOM changes with a short timer.
+    function placeButton(box) {
         if (!box) return;
-        const existing = document.getElementById(BUTTON_ID);
-        if (existing && existing.parentElement === box) return;
-        if (existing) existing.remove();
-        const btn = buildCinemaButton(true);
-        btn.style.setProperty('--jf-mui-hover', getMuiHoverColor());
-        box.prepend(btn);
-    }
-    // Hover tint of Jellyfin's own toolbar buttons (MUI IconButton,
-    // color 'inherit'): palette.action.active at action.hoverOpacity, i.e.
-    // white 8 % in the dark MUI themes, black 4 % in Light and Apple TV.
-    // The theme link's attribute is relative ("themes/dark/theme.css"), so
-    // the selector must not require a leading slash; link.href is absolute.
-    function getMuiHoverColor() {
-        const link = document.querySelector('link[href*="themes/"][href$="theme.css"]');
-        return link && /\/themes\/(light|appletv)\//.test(link.href) ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.08)';
-    }
-    function waitForExperimentalToolbar() {
-        const interval = setInterval(() => {
-            if (!document.body) return;
-            clearInterval(interval);
-            injectStyle();
-            createExperimentalButton();
-            new MutationObserver(createExperimentalButton).observe(document.body, { childList: true, subtree: true });
-        }, 200);
+        injectStyle();
+        let btn = document.getElementById(BUTTON_ID);
+        if (!btn) btn = buildCinemaButton();
+        const loading = btn.classList.contains('jf-cinema-loading');
+        if (jfcompat.isMui()) {
+            btn.className = 'jf-mui-header-btn';
+            btn.style.setProperty('--jf-mui-hover', jfcompat.getMuiHoverColor());
+        } else {
+            // Same classes as Jellyfin's own header buttons (SyncPlay, Cast,
+            // Search), so size, round hover/active highlight and colour come
+            // from Jellyfin's stylesheet and the active theme, 1:1.
+            btn.className = 'headerButton headerButtonRight paper-icon-button-light';
+        }
+        if (loading) btn.classList.add('jf-cinema-loading');
+        // Classic header: place once, as on 10.10.7; re-order only when the
+        // button is not in the box (new header, layout switch). Re-ordering on
+        // every DOM change would fight other header scripts that move themselves.
+        if (!jfcompat.isMui() && btn.parentElement === box) return;
+        // After Random, Autoscroll and Fullscreen, before Jellyfin's buttons.
+        placeInOrder(box, btn);
     }
     function waitForApiClient() {
         return new Promise((resolve) => {
@@ -1466,7 +1672,7 @@
         // just become visible page content instead of an actual comment.
         return `<!doctype html>
 <html lang="en"><head><meta charset="UTF-8" /><meta name="darkreader-lock" /><title>Cinema</title>
-<link rel="icon" id="faviconLink" href="${session.serverUrl}/web/favicon.ico" />
+<link rel="icon" id="faviconLink" href="${session.faviconUrl}" />
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #050302; font-family: Georgia, 'Times New Roman', serif; }
@@ -3627,14 +3833,14 @@ import * as THREE from '${THREE_CDN}';
   async function jfGet(path, params) {
     const url = new URL(session.serverUrl + path);
     Object.entries(params || {}).forEach(([k, v]) => { if (v !== undefined && v !== '') url.searchParams.set(k, v); });
-    const res = await fetch(url, { headers: { 'X-Emby-Token': session.accessToken } });
+    const res = await fetch(url, { headers: { 'Authorization': 'MediaBrowser Token="' + session.accessToken + '"' } });
     if (!res.ok) throw new Error('Jellyfin request failed (HTTP ' + res.status + ').');
     return res.json();
   }
   async function jfDelete(path, params) {
     const url = new URL(session.serverUrl + path);
     Object.entries(params || {}).forEach(([k, v]) => { if (v !== undefined && v !== '') url.searchParams.set(k, v); });
-    try { await fetch(url, { method: 'DELETE', headers: { 'X-Emby-Token': session.accessToken } }); } catch (err) { /* best-effort — a failed kill just means the old transcode keeps running harmlessly in the background */ }
+    try { await fetch(url, { method: 'DELETE', headers: { 'Authorization': 'MediaBrowser Token="' + session.accessToken + '"' } }); } catch (err) { /* best-effort — a failed kill just means the old transcode keeps running harmlessly in the background */ }
   }
   // A single, stable id for Cinema's own movie playback across its whole
   // runtime — not per-request. Sent as PlaySessionId on every /stream.mp4
@@ -3659,7 +3865,7 @@ import * as THREE from '${THREE_CDN}';
   async function checkTrailerAvailability(itemId) {
     if (trailerAvailabilityCache[itemId] === true) return !trailerBlockedCache[itemId];
     try {
-      const trailers = await jfGet('/Users/' + session.userId + '/Items/' + itemId + '/LocalTrailers', { Fields: 'Container,Path' });
+      const trailers = await jfGet('/Items/' + itemId + '/LocalTrailers', { userId: session.userId, Fields: 'Container,Path' });
       const trailer = trailers && trailers[0];
       const has = !!trailer;
       if (has) {
@@ -3748,7 +3954,7 @@ import * as THREE from '${THREE_CDN}';
     let total = null;
     for (;;) {
       const batchParams = Object.assign({}, params, { StartIndex: String(startIndex), Limit: String(MOVIE_FETCH_BATCH_SIZE) });
-      const data = await jfGet('/Users/' + session.userId + '/Items', batchParams);
+      const data = await jfGet('/Items', Object.assign({ userId: session.userId }, batchParams));
       const batchItems = data.Items || [];
       items = items.concat(batchItems);
       if (total === null) total = (typeof data.TotalRecordCount === 'number') ? data.TotalRecordCount : items.length;
@@ -4134,7 +4340,7 @@ import * as THREE from '${THREE_CDN}';
   // collection membership.
   async function fetchCollectionMovieIds(collectionId) {
     try {
-      const data = await jfGet('/Users/' + session.userId + '/Items', { ParentId: collectionId, IncludeItemTypes: 'Movie', Recursive: 'true', Fields: '' });
+      const data = await jfGet('/Items', { userId: session.userId, ParentId: collectionId, IncludeItemTypes: 'Movie', Recursive: 'true', Fields: '' });
       return (data.Items || []).map((i) => i.Id);
     } catch (err) {
       return [];
@@ -4156,7 +4362,7 @@ import * as THREE from '${THREE_CDN}';
   // here, matching anywhere in the title is exactly what's wanted.
   async function findMovieId(name) {
     if (!name) return '';
-    const data = await jfGet('/Users/' + session.userId + '/Items', { searchTerm: name, IncludeItemTypes: 'Movie', Recursive: 'true', Limit: '20' });
+    const data = await jfGet('/Items', { userId: session.userId, searchTerm: name, IncludeItemTypes: 'Movie', Recursive: 'true', Limit: '20' });
     const lower = name.toLowerCase();
     const match = (data.Items || []).find((m) => m.Name && m.Name.toLowerCase().includes(lower));
     return match ? match.Id : '';
@@ -4233,7 +4439,7 @@ import * as THREE from '${THREE_CDN}';
       let data;
       const lower = term.toLowerCase();
       if (mode === 'movie') {
-        data = await jfGet('/Users/' + session.userId + '/Items', { searchTerm: term, IncludeItemTypes: 'Movie', Recursive: 'true', Limit: '30' });
+        data = await jfGet('/Items', { userId: session.userId, searchTerm: term, IncludeItemTypes: 'Movie', Recursive: 'true', Limit: '30' });
       } else {
         data = await jfGet('/Persons', { searchTerm: term, userId: session.userId, IncludeItemTypes: 'Movie', Limit: '30' });
       }
@@ -4248,7 +4454,7 @@ import * as THREE from '${THREE_CDN}';
   }
   function posterUrl(item, maxHeight) {
     const tag = item.ImageTags.Primary;
-    return session.serverUrl + '/Items/' + item.Id + '/Images/Primary?maxHeight=' + (maxHeight || 600) + '&quality=90&tag=' + tag + '&api_key=' + session.accessToken;
+    return session.serverUrl + '/Items/' + item.Id + '/Images/Primary?maxHeight=' + (maxHeight || 600) + '&quality=90&tag=' + tag + '&ApiKey=' + session.accessToken;
   }
   function detailUrl(item) {
     return session.serverUrl + '/web/#/details?id=' + item.Id;
@@ -5512,14 +5718,14 @@ import * as THREE from '${THREE_CDN}';
     // applies the seek server-side there.
     if (sentinel === 'v:trailer') {
       try {
-        const trailers = await jfGet('/Users/' + session.userId + '/Items/' + fullItem.Id + '/LocalTrailers', { Fields: 'Container,Path' });
+        const trailers = await jfGet('/Items/' + fullItem.Id + '/LocalTrailers', { userId: session.userId, Fields: 'Container,Path' });
         const allowed = (trailers || []).filter((t) => !isBlockedMediaForPoster(t));
         if (!allowed.length) { console.log('[BackdropWall] v:trailer requested for "' + fullItem.Name + '" — no usable local trailer found, tile falls back to image.'); return null; }
         const chosen = resumeOrStartChannel(backdropTrailerChannel, allowed, backdropTrailerOrder);
         if (!chosen) return null;
         console.log('[BackdropWall] TRAILER — parent movie: "' + fullItem.Name + '" — trailer item: "' + chosen.Name + '" (id ' + chosen.Id + ') — start mode "' + backdropTrailerStart + '" — order "' + backdropTrailerOrder + '"');
         return {
-          src: session.serverUrl + '/Videos/' + chosen.Id + '/stream?static=true&api_key=' + session.accessToken,
+          src: session.serverUrl + '/Videos/' + chosen.Id + '/stream?static=true&ApiKey=' + session.accessToken,
           mediaId: chosen.Id,
           startMode: backdropTrailerStart,
           label: 'TRAILER "' + chosen.Name + '"'
@@ -5528,14 +5734,14 @@ import * as THREE from '${THREE_CDN}';
     }
     if (sentinel === 'v:themevideo') {
       try {
-        const data = await jfGet('/Items/' + fullItem.Id + '/ThemeVideos', { userId: session.userId, Fields: 'Container,Path' });
+        const data = await jfGet('/Items/' + fullItem.Id + '/ThemeVideos', { userId: session.userId, inheritFromParent: 'true', Fields: 'Container,Path' });
         const allowed = (data.Items || []).filter((v) => !isBlockedMediaForPoster(v));
         if (!allowed.length) { console.log('[BackdropWall] v:themevideo requested for "' + fullItem.Name + '" — no usable theme video found, tile falls back to image.'); return null; }
         const chosen = resumeOrStartChannel(backdropThemeVideoChannel, allowed, backdropThemeVideoOrder);
         if (!chosen) return null;
         console.log('[BackdropWall] THEME VIDEO — parent movie: "' + fullItem.Name + '" — theme video item: "' + chosen.Name + '" (id ' + chosen.Id + ') — start mode "' + backdropThemeVideoStart + '" — order "' + backdropThemeVideoOrder + '"');
         return {
-          src: session.serverUrl + '/Videos/' + chosen.Id + '/stream?static=true&api_key=' + session.accessToken,
+          src: session.serverUrl + '/Videos/' + chosen.Id + '/stream?static=true&ApiKey=' + session.accessToken,
           mediaId: chosen.Id,
           startMode: backdropThemeVideoStart,
           label: 'THEME VIDEO "' + chosen.Name + '"'
@@ -5547,7 +5753,7 @@ import * as THREE from '${THREE_CDN}';
       if (blocked) return null;
       console.log('[BackdropWall] MOVIE — "' + fullItem.Name + '" (id ' + fullItem.Id + ') — min%=' + backdropMovieMinInput.value + ' max%=' + backdropMovieMaxInput.value);
       return {
-        src: session.serverUrl + '/Videos/' + fullItem.Id + '/stream?static=true&api_key=' + session.accessToken,
+        src: session.serverUrl + '/Videos/' + fullItem.Id + '/stream?static=true&ApiKey=' + session.accessToken,
         mediaId: fullItem.Id,
         startMode: 'movie',
         label: 'MOVIE "' + fullItem.Name + '"'
@@ -5974,7 +6180,7 @@ import * as THREE from '${THREE_CDN}';
       usedFallbackForCurrentSrc = true;
       loadSeq++;
       startPlaybackWatchdog();
-      let fb = session.serverUrl + '/Videos/' + currentResolved.mediaId + '/stream.mp4?api_key=' + session.accessToken;
+      let fb = session.serverUrl + '/Videos/' + currentResolved.mediaId + '/stream.mp4?ApiKey=' + session.accessToken;
       // Best-effort server-side random start for the fallback: duration is
       // unknown client-side here, so reuse the Jellyfin-known runtime of
       // the movie item when available (only the movie case has it on hand).
@@ -6388,7 +6594,7 @@ import * as THREE from '${THREE_CDN}';
   // nothing" rule for the caller).
   async function ccResolveChapterSeconds(itemId, chapterNum, chapterName, wantRandom) {
     try {
-      const data = await jfGet('/Users/' + session.userId + '/Items/' + itemId, { Fields: 'Chapters' });
+      const data = await jfGet('/Items/' + itemId, { userId: session.userId, Fields: 'Chapters' });
       const chapters = data.Chapters || [];
       if (!chapters.length) return null;
       let target = null;
@@ -6404,7 +6610,7 @@ import * as THREE from '${THREE_CDN}';
   }
   async function ccResolveResumeSeconds(itemId) {
     try {
-      const data = await jfGet('/Users/' + session.userId + '/Items/' + itemId, { Fields: 'UserData' });
+      const data = await jfGet('/Items/' + itemId, { userId: session.userId, Fields: 'UserData' });
       const ticks = data.UserData && data.UserData.PlaybackPositionTicks;
       if (!ticks) return null;
       return ticks / 10000000;
@@ -6471,7 +6677,7 @@ import * as THREE from '${THREE_CDN}';
   // if the server's own search already excluded the right movie, no
   // amount of client-side normalization afterward can recover it.
   async function ccSearchMovieItems(searchTerm) {
-    const data = await jfGet('/Users/' + session.userId + '/Items', { searchTerm, IncludeItemTypes: 'Movie', Recursive: 'true', Limit: '50' }).catch(() => ({ Items: [] }));
+    const data = await jfGet('/Items', { userId: session.userId, searchTerm, IncludeItemTypes: 'Movie', Recursive: 'true', Limit: '50' }).catch(() => ({ Items: [] }));
     return data.Items || [];
   }
   async function ccFindMovieMatch(titleText, yearHint) {
@@ -6858,7 +7064,7 @@ import * as THREE from '${THREE_CDN}';
     if (state.personQuery) personId = await findPersonId(state.personQuery).catch(() => '');
     // ---- Collection: pure filter, no effect combination (doc's own rule) ----
     if (state.collectionQuery) {
-      const collections = await jfGet('/Users/' + session.userId + '/Items', { IncludeItemTypes: 'BoxSet', Recursive: 'true', searchTerm: state.collectionQuery, Limit: '5' }).catch(() => ({ Items: [] }));
+      const collections = await jfGet('/Items', { userId: session.userId, IncludeItemTypes: 'BoxSet', Recursive: 'true', searchTerm: state.collectionQuery, Limit: '5' }).catch(() => ({ Items: [] }));
       const col = (collections.Items || [])[0];
       if (col) {
         // Non-additive now (see this whole dispatch's own top-level
@@ -8332,7 +8538,7 @@ import * as THREE from '${THREE_CDN}';
       return;
     }
     if (!fullItem || !fullItem.ImageTags || !fullItem.ImageTags.Logo) return;
-    const url = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Logo?tag=' + fullItem.ImageTags.Logo + '&api_key=' + session.accessToken;
+    const url = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Logo?tag=' + fullItem.ImageTags.Logo + '&ApiKey=' + session.accessToken;
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin('anonymous');
     loader.load(url, (tex) => {
@@ -8574,7 +8780,7 @@ import * as THREE from '${THREE_CDN}';
   // song's OWN file duration, which genuinely differs song to song and so
   // is worth re-computing here when the toggle allows it.
   function playThemeSongQueueTransition(mediaItem) {
-    themeSongAudio.src = session.serverUrl + '/Audio/' + mediaItem.Id + '/stream?static=true&api_key=' + session.accessToken;
+    themeSongAudio.src = session.serverUrl + '/Audio/' + mediaItem.Id + '/stream?static=true&ApiKey=' + session.accessToken;
     themeSongAudio.currentTime = 0;
     const myGeneration = themeSongPlaythroughGeneration;
     applyThemeSongStartPosition(themeSongAudio, themeSongStartPosition, themeSongStartMin, themeSongStartMax, myGeneration);
@@ -8629,7 +8835,7 @@ import * as THREE from '${THREE_CDN}';
       playThemeSongQueueTransition(mediaItem);
       return;
     }
-    themeSongAudio.src = session.serverUrl + '/Audio/' + mediaItem.Id + '/stream?static=true&api_key=' + session.accessToken;
+    themeSongAudio.src = session.serverUrl + '/Audio/' + mediaItem.Id + '/stream?static=true&ApiKey=' + session.accessToken;
     themeSongAudio.currentTime = 0;
     const sp = getThemeSongStartPositionFor(themeSongAudioContext);
     applyThemeSongStartPosition(themeSongAudio, sp.position, sp.min, sp.max, themeSongPlaythroughGeneration);
@@ -8669,7 +8875,7 @@ import * as THREE from '${THREE_CDN}';
   async function playNextQueuedVideo(mediaItem) {
     actionRequestId++;
     const myRequestId = actionRequestId;
-    trailerVideo.src = session.serverUrl + '/Videos/' + mediaItem.Id + '/stream.mp4?api_key=' + session.accessToken;
+    trailerVideo.src = session.serverUrl + '/Videos/' + mediaItem.Id + '/stream.mp4?ApiKey=' + session.accessToken;
     trailerVideo.currentTime = 0;
     try {
       await trailerVideo.play();
@@ -8686,7 +8892,7 @@ import * as THREE from '${THREE_CDN}';
     actionRequestId++;
     const myRequestId = actionRequestId;
     try {
-      const data = await jfGet('/Items/' + itemId + '/ThemeSongs', { userId: session.userId });
+      const data = await jfGet('/Items/' + itemId + '/ThemeSongs', { userId: session.userId, inheritFromParent: 'true' });
       if (myRequestId !== actionRequestId) return true;
       const song = startChannel(themeSongChannel, data.Items || [], themeSongPlaybackOrder);
       if (!song) return false;
@@ -8715,7 +8921,7 @@ import * as THREE from '${THREE_CDN}';
       const trimActive = themeSongDelayedStartSeconds > 0 || themeSongEarlyEndSeconds > 0 || themeSongFadeInSeconds > 0 || themeSongFadeOutSeconds > 0 || themeSongStartPosition === 'random';
       themeSongAudio.loop = trimActive ? false : shouldLoop;
       const targetVolume = volThemeSong / 100;
-      themeSongAudio.src = session.serverUrl + '/Audio/' + song.Id + '/stream?static=true&api_key=' + session.accessToken;
+      themeSongAudio.src = session.serverUrl + '/Audio/' + song.Id + '/stream?static=true&ApiKey=' + session.accessToken;
       themeSongAudioItemId = itemId;
       themeSongAudioContext = 'themesong';
       if (trimActive) {
@@ -8837,7 +9043,7 @@ import * as THREE from '${THREE_CDN}';
         themeSongAudio.play().catch(() => {});
       }
       activeEnvState = 'EnvThemeSong';
-      const fullItem = await jfGet('/Users/' + session.userId + '/Items/' + itemId, {});
+      const fullItem = await jfGet('/Items/' + itemId, { userId: session.userId });
       if (myRequestId !== actionRequestId) return true;
       showNoTrailerDisplay(item, fullItem, 'themesong', allowSkipIfUnchanged);
       return true;
@@ -8857,7 +9063,7 @@ import * as THREE from '${THREE_CDN}';
   async function checkThemeSongAvailability(itemId) {
     if (themeSongAvailabilityCache[itemId] === true) return true;
     try {
-      const data = await jfGet('/Items/' + itemId + '/ThemeSongs', { userId: session.userId });
+      const data = await jfGet('/Items/' + itemId + '/ThemeSongs', { userId: session.userId, inheritFromParent: 'true' });
       const has = !!(data.Items && data.Items.length);
       if (has) themeSongAvailabilityCache[itemId] = true;
       return has;
@@ -8867,7 +9073,7 @@ import * as THREE from '${THREE_CDN}';
   async function checkThemeVideoAvailability(itemId) {
     if (themeVideoAvailabilityCache[itemId] === true) return !themeVideoBlockedCache[itemId];
     try {
-      const data = await jfGet('/Items/' + itemId + '/ThemeVideos', { userId: session.userId, Fields: 'Container,Path' });
+      const data = await jfGet('/Items/' + itemId + '/ThemeVideos', { userId: session.userId, inheritFromParent: 'true', Fields: 'Container,Path' });
       const video = data.Items && data.Items[0];
       const has = !!video;
       if (has) {
@@ -8881,7 +9087,7 @@ import * as THREE from '${THREE_CDN}';
   async function checkMovieBlocked(itemId) {
     if (movieBlockedCache[itemId] !== undefined) return movieBlockedCache[itemId];
     try {
-      const data = await jfGet('/Users/' + session.userId + '/Items/' + itemId, { Fields: 'Container,Path' });
+      const data = await jfGet('/Items/' + itemId, { userId: session.userId, Fields: 'Container,Path' });
       const blocked = isBlockedMediaForPoster(data);
       movieBlockedCache[itemId] = blocked;
       return blocked;
@@ -9089,7 +9295,7 @@ import * as THREE from '${THREE_CDN}';
     if (fanartWallActive) fanartWallItemId = item.Id;
     tooltipEl.innerHTML = item.Name + '<div class="trailerhint">Loading movie …</div>';
     try {
-      const fullItem = await jfGet('/Users/' + session.userId + '/Items/' + item.Id, {});
+      const fullItem = await jfGet('/Items/' + item.Id, { userId: session.userId });
       if (myRequestId !== actionRequestId) return;
       // Always the transcoded endpoint (matches the ORIGINAL, pre-console
       // behavior exactly for the no-seekIntent case) rather than
@@ -9158,7 +9364,7 @@ import * as THREE from '${THREE_CDN}';
       // the cause of chapter/percent landing on an earlier resume
       // position instead of their own.
       cinemaPlaySessionId = 'cinema-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-      let src = session.serverUrl + '/Videos/' + item.Id + '/stream.mp4?api_key=' + session.accessToken + '&PlaySessionId=' + cinemaPlaySessionId;
+      let src = session.serverUrl + '/Videos/' + item.Id + '/stream.mp4?ApiKey=' + session.accessToken + '&PlaySessionId=' + cinemaPlaySessionId;
       if (session.deviceId) src += '&DeviceId=' + encodeURIComponent(session.deviceId);
       let seekSeconds = 0;
       if (seekIntent) {
@@ -9263,9 +9469,9 @@ import * as THREE from '${THREE_CDN}';
     tooltipEl.innerHTML = item.Name + '<div class="trailerhint">Loading theme video …</div>';
     try {
       const [data, fullItem, themeSongData] = await Promise.all([
-        jfGet('/Items/' + item.Id + '/ThemeVideos', { userId: session.userId }),
-        jfGet('/Users/' + session.userId + '/Items/' + item.Id, {}),
-        replaceAudioThemeVideo ? jfGet('/Items/' + item.Id + '/ThemeSongs', { userId: session.userId }).catch(() => null) : Promise.resolve(null),
+        jfGet('/Items/' + item.Id + '/ThemeVideos', { userId: session.userId, inheritFromParent: 'true' }),
+        jfGet('/Items/' + item.Id, { userId: session.userId }),
+        replaceAudioThemeVideo ? jfGet('/Items/' + item.Id + '/ThemeSongs', { userId: session.userId, inheritFromParent: 'true' }).catch(() => null) : Promise.resolve(null),
       ]);
       if (myRequestId !== actionRequestId) return;
       const video = startChannel(themeVideoChannel, data.Items || [], themeVideoPlaybackOrder);
@@ -9276,7 +9482,7 @@ import * as THREE from '${THREE_CDN}';
         return;
       }
       const replaceSong = startChannel(themeVideoReplaceChannel, (themeSongData && themeSongData.Items) || [], themeVideoReplaceAudioOrder);
-      const src = session.serverUrl + '/Videos/' + video.Id + '/stream.mp4?api_key=' + session.accessToken;
+      const src = session.serverUrl + '/Videos/' + video.Id + '/stream.mp4?ApiKey=' + session.accessToken;
       trailerVideo.src = src;
       trailerVideo.currentTime = 0;
       trailerVideo.loop = themeVideoChannel.queue.length <= 1 ? loopThemeVideo : false;
@@ -9319,7 +9525,7 @@ import * as THREE from '${THREE_CDN}';
         // Native .loop disabled whenever Start Position is 'random' —
         // see ambientStartMovieReplaceAudio's own comment for why.
         themeSongAudio.loop = (themeVideoReplaceChannel.queue.length <= 1 && themeVideoReplaceAudioStartPosition !== 'random') ? loopThemeVideo : false;
-        themeSongAudio.src = session.serverUrl + '/Audio/' + replaceSong.Id + '/stream?static=true&api_key=' + session.accessToken;
+        themeSongAudio.src = session.serverUrl + '/Audio/' + replaceSong.Id + '/stream?static=true&ApiKey=' + session.accessToken;
         themeSongAudio.currentTime = 0;
         themeSongAudioItemId = item.Id;
         themeSongAudioContext = 'themevideoReplace';
@@ -9377,7 +9583,7 @@ import * as THREE from '${THREE_CDN}';
   function refreshFanartWallIfActive(item) {
     if (!fanartWallActive) return;
     fanartWallItemId = item.Id;
-    jfGet('/Users/' + session.userId + '/Items/' + item.Id, {}).then((fullItem) => buildBackdropMosaic(fullItem)).catch(() => {});
+    jfGet('/Items/' + item.Id, { userId: session.userId }).then((fullItem) => buildBackdropMosaic(fullItem)).catch(() => {});
   }
   async function toggleFanartWall(item, allowSkipIfUnchanged) {
     if (fanartWallActive && fanartWallItemId === item.Id) {
@@ -9400,7 +9606,7 @@ import * as THREE from '${THREE_CDN}';
     fanartWallItemId = item.Id;
     fanartWallActivationId = myRequestId;
     try {
-      const fullItem = await jfGet('/Users/' + session.userId + '/Items/' + item.Id, {});
+      const fullItem = await jfGet('/Items/' + item.Id, { userId: session.userId });
       if (myRequestId !== actionRequestId) {
         if (fanartWallActivationId === myRequestId) { fanartWallActive = false; fanartWallItemId = null; }
         return;
@@ -9861,7 +10067,7 @@ import * as THREE from '${THREE_CDN}';
   // (see replaceAudioOrder's own comment on that).
   async function ambientStartMovieReplaceAudio(item, volume, loop, myRunId) {
     try {
-      const themeSongData = await jfGet('/Items/' + item.Id + '/ThemeSongs', { userId: session.userId });
+      const themeSongData = await jfGet('/Items/' + item.Id + '/ThemeSongs', { userId: session.userId, inheritFromParent: 'true' });
       if (myRunId !== ambientRequestId || trailerItemId !== item.Id || activeVideoState !== 'movie') return;
       const song = themeSongData && themeSongData.Items && themeSongData.Items[0];
       if (!song) return; // no theme song to replace with — the movie already plays silently (volMovie forced to 0 above) regardless, so this is a quiet, non-broken degradation rather than a failure
@@ -9876,7 +10082,7 @@ import * as THREE from '${THREE_CDN}';
       const wantsRandomStart = themeSongStartPosition === 'random';
       themeSongAudio.loop = wantsRandomStart ? false : loop;
       ambientMovieReplaceLoopFlag = loop;
-      themeSongAudio.src = session.serverUrl + '/Audio/' + song.Id + '/stream?static=true&api_key=' + session.accessToken;
+      themeSongAudio.src = session.serverUrl + '/Audio/' + song.Id + '/stream?static=true&ApiKey=' + session.accessToken;
       themeSongAudio.currentTime = 0;
       themeSongAudioItemId = item.Id;
       themeSongAudioContext = 'ambientMovieReplace';
@@ -9909,7 +10115,7 @@ import * as THREE from '${THREE_CDN}';
   async function playAmbientSequence(item, itemId, profile, index, myRunId) {
     if (myRunId !== ambientRequestId) return;
     const myStepId = ++ambientStepId;
-    const fullItem = await jfGet('/Users/' + session.userId + '/Items/' + itemId, {});
+    const fullItem = await jfGet('/Items/' + itemId, { userId: session.userId });
     if (myRunId !== ambientRequestId) return;
     const resolved = await resolveAmbientSequence(profile, index, itemId, fullItem);
     if (myRunId !== ambientRequestId) return;
@@ -10724,7 +10930,7 @@ import * as THREE from '${THREE_CDN}';
     if (backdropDedupeCache[fullItem.Id]) return backdropDedupeCache[fullItem.Id];
     async function hashOf(idx) {
       try {
-        const url = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Backdrop/' + idx + '?tag=' + tags[idx] + '&api_key=' + session.accessToken;
+        const url = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Backdrop/' + idx + '?tag=' + tags[idx] + '&ApiKey=' + session.accessToken;
         const img = await loadImageEl(url);
         return computeDHash(img);
       } catch (err) {
@@ -11010,7 +11216,7 @@ import * as THREE from '${THREE_CDN}';
     const CELL_H = CELL_W * 9 / 16;
     const z = room.ROOM_DEPTH / 2 - 0.08;
     function backdropUrl(idx) {
-      return session.serverUrl + '/Items/' + fullItem.Id + '/Images/Backdrop/' + idx + '?tag=' + backdropTags[idx] + '&api_key=' + session.accessToken;
+      return session.serverUrl + '/Items/' + fullItem.Id + '/Images/Backdrop/' + idx + '?tag=' + backdropTags[idx] + '&ApiKey=' + session.accessToken;
     }
     function addTile(x, y, w, h, idx, trackForShuffle, liveGeom) {
       const mat = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0 });
@@ -11060,7 +11266,7 @@ import * as THREE from '${THREE_CDN}';
         return { x: 0, y: ch, w: cw * 2 - GAP, h: ch * 2 - GAP };
       });
       if (fullItem.ImageTags && fullItem.ImageTags.Logo) {
-        const logoUrl = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Logo?tag=' + fullItem.ImageTags.Logo + '&api_key=' + session.accessToken;
+        const logoUrl = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Logo?tag=' + fullItem.ImageTags.Logo + '&ApiKey=' + session.accessToken;
         backdropLoader.load(logoUrl, (tex) => {
           tex.colorSpace = THREE.SRGBColorSpace;
           const iw = tex.image.width, ih = tex.image.height;
@@ -11111,8 +11317,8 @@ import * as THREE from '${THREE_CDN}';
           // current tile counts) — otherwise raising a dropdown from 0
           // later would hit a stale "unavailable" verdict for this movie.
           const [trailers, themeData, movieBlocked] = await Promise.all([
-            jfGet('/Users/' + session.userId + '/Items/' + fullItem.Id + '/LocalTrailers', { Fields: 'Container,Path' }).catch(() => []),
-            jfGet('/Items/' + fullItem.Id + '/ThemeVideos', { userId: session.userId, Fields: 'Container,Path' }).catch(() => ({ Items: [] })),
+            jfGet('/Items/' + fullItem.Id + '/LocalTrailers', { userId: session.userId, Fields: 'Container,Path' }).catch(() => []),
+            jfGet('/Items/' + fullItem.Id + '/ThemeVideos', { userId: session.userId, inheritFromParent: 'true', Fields: 'Container,Path' }).catch(() => ({ Items: [] })),
             checkMovieBlocked(fullItem.Id).catch(() => true)
           ]);
           avail.trailer = (trailers || []).some((t) => !isBlockedMediaForPoster(t));
@@ -11205,7 +11411,7 @@ import * as THREE from '${THREE_CDN}';
       marqueeTargetOpacity = 1;
     }
     if (showDiscArt && envEnabled('disc') && fullItem.ImageTags && fullItem.ImageTags.Disc) {
-      const discUrl = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Disc?tag=' + fullItem.ImageTags.Disc + '&api_key=' + session.accessToken;
+      const discUrl = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Disc?tag=' + fullItem.ImageTags.Disc + '&ApiKey=' + session.accessToken;
       backdropLoader.load(discUrl, (tex) => {
         tex.colorSpace = THREE.SRGBColorSpace;
         // Starts at 0, not the final 0.5, and gets faded IN via bgFadeList
@@ -11351,7 +11557,7 @@ import * as THREE from '${THREE_CDN}';
   function pendingFallbackToImage(p, imgIdx) {
     disposeTileVideo(p);
     p.idx = imgIdx;
-    const url = session.serverUrl + '/Items/' + currentFullItem.Id + '/Images/Backdrop/' + imgIdx + '?tag=' + currentFullItem.BackdropImageTags[imgIdx] + '&api_key=' + session.accessToken;
+    const url = session.serverUrl + '/Items/' + currentFullItem.Id + '/Images/Backdrop/' + imgIdx + '?tag=' + currentFullItem.BackdropImageTags[imgIdx] + '&ApiKey=' + session.accessToken;
     backdropLoader.load(url, (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace;
       fitCover(tex, p.w, p.h);
@@ -11377,7 +11583,7 @@ import * as THREE from '${THREE_CDN}';
       const timerSeconds = Math.max(1, parseInt(document.getElementById('backdropSecondsInput').value, 10) || 5);
       loadVideoIntoTile(pending, newIdx, currentFullItem, timerSeconds);
     } else {
-      const url = session.serverUrl + '/Items/' + currentFullItem.Id + '/Images/Backdrop/' + newIdx + '?tag=' + currentFullItem.BackdropImageTags[newIdx] + '&api_key=' + session.accessToken;
+      const url = session.serverUrl + '/Items/' + currentFullItem.Id + '/Images/Backdrop/' + newIdx + '?tag=' + currentFullItem.BackdropImageTags[newIdx] + '&ApiKey=' + session.accessToken;
       backdropLoader.load(url, (tex) => {
         if (info.__pendingSwap !== pending) { tex.dispose(); return; }
         tex.colorSpace = THREE.SRGBColorSpace;
@@ -11670,9 +11876,9 @@ import * as THREE from '${THREE_CDN}';
     if (fanartWallActive) fanartWallItemId = item.Id;
     tooltipEl.innerHTML = item.Name + '<div class="trailerhint">Looking for trailer …</div>';
     try {
-      const fullItemPromise = jfGet('/Users/' + session.userId + '/Items/' + item.Id, {});
-      const themeSongPromise = replaceAudioTrailer ? jfGet('/Items/' + item.Id + '/ThemeSongs', { userId: session.userId }).catch(() => null) : Promise.resolve(null);
-      const trailers = await jfGet('/Users/' + session.userId + '/Items/' + item.Id + '/LocalTrailers', {});
+      const fullItemPromise = jfGet('/Items/' + item.Id, { userId: session.userId });
+      const themeSongPromise = replaceAudioTrailer ? jfGet('/Items/' + item.Id + '/ThemeSongs', { userId: session.userId, inheritFromParent: 'true' }).catch(() => null) : Promise.resolve(null);
+      const trailers = await jfGet('/Items/' + item.Id + '/LocalTrailers', { userId: session.userId });
       if (trailers && trailers.length) trailerAvailabilityCache[item.Id] = true;
       const fullItem = await fullItemPromise;
       const themeSongData = await themeSongPromise;
@@ -11684,7 +11890,7 @@ import * as THREE from '${THREE_CDN}';
         return;
       }
       const chosenTrailer = startChannel(trailerChannel, trailers, trailerPlaybackOrder);
-      const src = session.serverUrl + '/Videos/' + chosenTrailer.Id + '/stream.mp4?api_key=' + session.accessToken;
+      const src = session.serverUrl + '/Videos/' + chosenTrailer.Id + '/stream.mp4?ApiKey=' + session.accessToken;
       trailerVideo.src = src;
       trailerVideo.currentTime = 0;
       trailerVideo.loop = trailerChannel.queue.length <= 1 ? loopTrailer : false;
@@ -11730,7 +11936,7 @@ import * as THREE from '${THREE_CDN}';
         // Native .loop disabled whenever Start Position is 'random' —
         // see ambientStartMovieReplaceAudio's own comment for why.
         themeSongAudio.loop = (trailerReplaceChannel.queue.length <= 1 && trailerReplaceAudioStartPosition !== 'random') ? loopTrailer : false;
-        themeSongAudio.src = session.serverUrl + '/Audio/' + replaceSong.Id + '/stream?static=true&api_key=' + session.accessToken;
+        themeSongAudio.src = session.serverUrl + '/Audio/' + replaceSong.Id + '/stream?static=true&ApiKey=' + session.accessToken;
         themeSongAudio.currentTime = 0;
         themeSongAudioItemId = item.Id;
         themeSongAudioContext = 'trailerReplace';
@@ -11782,7 +11988,7 @@ import * as THREE from '${THREE_CDN}';
     }
   }
   function showScreenLogo(fullItem, logoTag) {
-    const url = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Logo?tag=' + logoTag + '&api_key=' + session.accessToken;
+    const url = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Logo?tag=' + logoTag + '&ApiKey=' + session.accessToken;
     backdropLoader.load(url, (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace;
       const iw = tex.image.width, ih = tex.image.height;
@@ -11916,14 +12122,14 @@ import * as THREE from '${THREE_CDN}';
         const posterTag = fullItem.ImageTags && fullItem.ImageTags.Primary;
         const logoTag = fullItem.ImageTags && fullItem.ImageTags.Logo;
         if (thumbTag) {
-          const url = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Thumb?tag=' + thumbTag + '&api_key=' + session.accessToken;
+          const url = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Thumb?tag=' + thumbTag + '&ApiKey=' + session.accessToken;
           backdropLoader.load(url, (tex) => {
             tex.colorSpace = THREE.SRGBColorSpace;
             showFallbackImage(tex);
           }, undefined, () => {});
           if (screenLogoMesh) screenLogoTargetOpacity = 0;
         } else if (backdropTag) {
-          const url = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Backdrop/0?tag=' + backdropTag + '&api_key=' + session.accessToken;
+          const url = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Backdrop/0?tag=' + backdropTag + '&ApiKey=' + session.accessToken;
           backdropLoader.load(url, (tex) => {
             tex.colorSpace = THREE.SRGBColorSpace;
             showFallbackImage(tex);
@@ -11931,7 +12137,7 @@ import * as THREE from '${THREE_CDN}';
           if (logoTag) showScreenLogo(fullItem, logoTag);
           else if (screenLogoMesh) screenLogoTargetOpacity = 0;
         } else if (posterTag) {
-          const url = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Primary?tag=' + posterTag + '&api_key=' + session.accessToken;
+          const url = session.serverUrl + '/Items/' + fullItem.Id + '/Images/Primary?tag=' + posterTag + '&ApiKey=' + session.accessToken;
           backdropLoader.load(url, (tex) => {
             tex.colorSpace = THREE.SRGBColorSpace;
             showFallbackImage(tex);
@@ -11979,7 +12185,7 @@ import * as THREE from '${THREE_CDN}';
     const switchingTrailer = trailerActive;
     stopTrailer(switchingTrailer);
     try {
-      const fullItem = await jfGet('/Users/' + session.userId + '/Items/' + item.Id, {});
+      const fullItem = await jfGet('/Items/' + item.Id, { userId: session.userId });
       if (myRequestId !== actionRequestId) return;
       activeEnvState = inheritedEnvState;
       showNoTrailerDisplay(item, fullItem, 'screenart');
@@ -16080,10 +16286,10 @@ import * as THREE from '${THREE_CDN}';
     let baseOpts = {};
     try {
       if (launchContext.kind === 'genre') {
-        const data = await jfGet('/Users/' + session.userId + '/Items/' + launchContext.id, {});
+        const data = await jfGet('/Items/' + launchContext.id, { userId: session.userId });
         baseOpts = data && data.Name ? { genresList: [data.Name] } : {};
       } else if (launchContext.kind === 'studio') {
-        const data = await jfGet('/Users/' + session.userId + '/Items/' + launchContext.id, {});
+        const data = await jfGet('/Items/' + launchContext.id, { userId: session.userId });
         baseOpts = data && data.Name ? { studiosList: [data.Name] } : {};
       } else if (launchContext.kind === 'tag') {
         baseOpts = launchContext.tag ? { tagsList: [launchContext.tag] } : {};
@@ -16198,7 +16404,7 @@ import * as THREE from '${THREE_CDN}';
     }
     if (opts.personId && ctx && ctx.kind === 'person') {
       try {
-        const data = await jfGet('/Users/' + session.userId + '/Items/' + opts.personId, {});
+        const data = await jfGet('/Items/' + opts.personId, { userId: session.userId });
         if (data && data.Name) {
           acSelectedPersonId = opts.personId;
           const actorInputEl = document.getElementById('actorInput');
@@ -16342,6 +16548,39 @@ import * as THREE from '${THREE_CDN}';
         else if (/collectionType=movies\b/i.test(hash) || collectionType === 'movies') {
             result = { kind: 'movies' };
         }
+        // The Movies library page is a React (MUI) page in the Experimental
+        // layout (10.10.x) and the default "modern" layout (12.x); list and
+        // details pages stay classic in both. Its tabs come from '?tab=N'
+        // (or, without one, the user's 'landing-{libraryId}' setting), and
+        // the tab order differs between the two versions:
+        //   10.10.7 apps/experimental/routes/movies/index.tsx:52-59
+        //   12.1    apps/modern/features/libraries/constants/views/movies.ts:64-72
+        // Each tab keeps sort + filters as ONE JSON blob in localStorage
+        // under '{tab} - {libraryId}', without the userId prefix the classic
+        // pages use (utils/items.ts:145 in 10.10.7,
+        // apps/modern/features/libraries/utils/settings.ts:30 in 12.1).
+        // muiView stays null on every classic page, so nothing below changes
+        // there.
+        let muiView = null;
+        if (result && result.kind === 'movies' && jfcompat.isMui() && jfcompat.getRoute().name === 'movies') {
+            const libraryId = params.get('topParentId');
+            const tabs = jfcompat.isNewModel()
+                ? ['movies', 'suggestions', 'favorites', 'collections', 'genres', 'studios', 'playlists']
+                : ['movies', 'suggestions', 'trailers', 'favorites', 'collections', 'genres'];
+            const tabParam = params.get('tab');
+            let tab = tabParam !== null ? tabs[parseInt(tabParam, 10)] : null;
+            if (!tab) {
+                try {
+                    const landing = localStorage.getItem(apiClient.getCurrentUserId() + '-landing-' + libraryId);
+                    tab = tabs.indexOf(landing) >= 0 ? landing : 'movies';
+                } catch (err) { tab = 'movies'; }
+            }
+            // Only the Movies and Favorites tabs are movie grids with their
+            // own sort/filter; the others (suggestions, collections,
+            // genres, ...) open the library plainly, as before.
+            muiView = { key: tab + ' - ' + libraryId, carry: tab === 'movies' || tab === 'favorites' };
+            if (tab === 'favorites') result = { kind: 'favorites' };
+        }
         // Scroll-position starting point — whichever card is currently
         // FULLY visible, topmost-leftmost, on screen becomes the Poster
         // Wall's own starting point, resuming roughly where scrolling
@@ -16353,7 +16592,7 @@ import * as THREE from '${THREE_CDN}';
         // movie grid to begin with, and NOT the movie-detail "backtrack"
         // case further down, which already has its own specific
         // starting movie for a different reason entirely.
-        if (result && EFFECTIVE_SMART_LAUNCH.scroll) {
+        if (result && EFFECTIVE_SMART_LAUNCH.scroll && !(muiView && !muiView.carry)) {
             // No artificial delay here — an earlier attempt added one
             // (up to a flat 3 seconds) suspecting a timing/repositioning
             // race, but the REAL cause turned out to be something else
@@ -16371,13 +16610,13 @@ import * as THREE from '${THREE_CDN}';
             // steps back to the general library view with this movie as
             // the Wall's own starting point (see further down).
             // A raw REST call, not an unconfirmed ApiClient convenience
-            // method — same /Users/{userId}/Items/{id} shape already
-            // proven to work everywhere else this script talks to
+            // method — same /Items/{id}?userId= route (not the obsolete
+            // /Users/{userId}/Items/{id}) used everywhere else this script talks to
             // Jellyfin, built from the same serverAddress/accessToken
             // pieces session itself already uses just above.
             try {
                 const userId = apiClient.getCurrentUserId();
-                const url = apiClient.serverAddress() + '/Users/' + userId + '/Items/' + detailsId + '?api_key=' + apiClient.accessToken();
+                const url = apiClient.serverAddress() + '/Items/' + detailsId + '?userId=' + userId + '&ApiKey=' + apiClient.accessToken();
                 const res = await fetch(url);
                 const item = res.ok ? await res.json() : null;
                 if (item && item.Type === 'BoxSet') result = { kind: 'collection', id: detailsId };
@@ -16530,8 +16769,36 @@ import * as THREE from '${THREE_CDN}';
                 } catch (err) { /* localStorage unavailable in this shape */ }
                 return out;
             }
+            // The MUI library page's settings (LibraryViewSettings, types/
+            // library.ts in both versions), turned into the same sortObj /
+            // filterObj shapes the classic readers above return. SortBy is a
+            // string in 10.10.7 and an array in 12.1; genres, tags and
+            // ratings are names, as in the classic Movies tab.
+            function readMuiLibrarySettings(key) {
+                const out = { sortObj: null, filterObj: null };
+                try {
+                    const settings = JSON.parse(localStorage.getItem(key) || 'null');
+                    if (!settings) return out;
+                    const sortBy = Array.isArray(settings.SortBy) ? settings.SortBy.join(',') : settings.SortBy;
+                    if (sortBy) out.sortObj = { SortBy: sortBy, SortOrder: settings.SortOrder === 'Descending' ? 'Descending' : 'Ascending' };
+                    const f = settings.Filters || {};
+                    const joined = (list, sep) => (Array.isArray(list) && list.length ? list.join(sep) : null);
+                    const filterObj = {};
+                    if (joined(f.Genres, '|')) filterObj.Genres = joined(f.Genres, '|');
+                    if (joined(f.Tags, '|')) filterObj.Tags = joined(f.Tags, '|');
+                    if (joined(f.Years, ',')) filterObj.Years = joined(f.Years, ',');
+                    if (joined(f.OfficialRatings, '|')) filterObj.OfficialRatings = joined(f.OfficialRatings, '|');
+                    if (joined(f.Status, ',')) filterObj.Filters = joined(f.Status, ',');
+                    if (joined(f.VideoTypes, ',')) filterObj.VideoTypes = joined(f.VideoTypes, ',');
+                    (f.Features || []).concat(f.VideoBasicFilter || []).forEach((name) => { filterObj[name] = true; });
+                    out.filterObj = Object.keys(filterObj).length ? filterObj : null;
+                } catch (err) { /* nothing usable stored */ }
+                return out;
+            }
             let lsResult = { sortObj: null, filterObj: null };
-            if (result.kind === 'favorites') {
+            if (muiView) {
+                if (muiView.carry) lsResult = readMuiLibrarySettings(muiView.key);
+            } else if (result.kind === 'favorites') {
                 // The confirmed real URL routes through list.js, not the
                 // Movies-tab mechanism — tried first. The old exact
                 // 'favorites' mode lookup (movies.js-style JSON blob)
@@ -16627,6 +16894,9 @@ import * as THREE from '${THREE_CDN}';
                 // landing back at the start regardless of the request
                 // URL's own StartTimeTicks being correct.
                 deviceId: apiClient.deviceId(),
+                // The host page's own tab icon: 12.x ships it under a hashed
+                // name (favicon.<hash>.ico), so '/web/favicon.ico' is gone there.
+                faviconUrl: (document.querySelector('link[rel~="icon"]') || {}).href || apiClient.serverAddress() + '/web/favicon.ico',
             };
             const launchContext = await detectSmartLaunchContext(apiClient);
             const html = buildCinemaHtml(session, launchContext);
@@ -16640,8 +16910,5 @@ import * as THREE from '${THREE_CDN}';
             btn.classList.remove('jf-cinema-loading');
         }
     }
-    if (ccIsSupportedPlatform()) {
-        if (IS_EXPERIMENTAL_LAYOUT) waitForExperimentalToolbar();
-        else waitForHeader();
-    }
+    if (ccIsSupportedPlatform()) jfcompat.onHeaderBoxChange(placeButton);
 })();
