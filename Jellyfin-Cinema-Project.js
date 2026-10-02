@@ -1,14 +1,15 @@
 (function () {
     'use strict';
 
-    /* jfcompat 1.0 - one script for Jellyfin web 10.10.7 and 12.1.
+    /* jfcompat 1.1 - one script for Jellyfin web 10.10.7 and 12.1 (1.1: layout
+     * setting scheme of 10.11 = 10.10, isModernLayoutModel).
      * Paste this block unchanged at the top of a script (inside its IIFE).
      * It is pure: no side effects at load, no globals except window.jfcompat
      * (set only when absent, for console checks; scripts use the local const).
      * Rule: on 10.10.7 every answer equals what the scripts computed before. */
     const jfcompat = (function () {
         'use strict';
-        const VERSION = '1.0';
+        const VERSION = '1.1';
 
         // ---------- version ----------
         // The web client ships with the server, so the server version decides.
@@ -28,12 +29,28 @@
             } catch (e) { /* ignore */ }
             return null;
         }
-        // 12.x model: modern layout default, routes without .html, legacy auth off.
-        // 10.11 was not audited; treated as the new model (live-check before relying on it).
+        // New model (>= 10.11): routes without .html, no Trailers tab on the
+        // Movies pages. Audited 2026-10-02 against web 10.11.11 (appRouter.js:404,
+        // moviesrecommended.js:229-241, apps/experimental/routes/movies/index.tsx:46-51).
+        // The layout setting is NOT part of it: 10.11 still has the 10.10 scheme,
+        // see isModernLayoutModel().
         function isNewModel() {
             const v = serverVersion();
             if (v) return v.major > 10 || (v.major === 10 && v.minor >= 11);
             return document.documentElement.hasAttribute('data-theme');
+        }
+
+        // Layout setting scheme of 12.x: modern by default, 'desktop-legacy' /
+        // 'mobile-legacy' / 'tv' classic (constants/layoutMode.ts, apphost.js
+        // 12.0:185-186). 10.10 and 10.11 instead: classic by default, MUI only for
+        // 'experimental' (layoutManager.js identical in 10.10.7 and 10.11.11,
+        // RootAppRouter.tsx 10.11.11:21-22). Without a server version the 12.x
+        // hint of isNewModel() decides (10.11 sets data-theme too; the DOM check
+        // in getLayout() comes first anyway).
+        function isModernLayoutModel() {
+            const v = serverVersion();
+            if (v) return v.major >= 12;
+            return isNewModel();
         }
 
         // ---------- routes ----------
@@ -92,7 +109,7 @@
             // 2) the setting, read the way each version reads it (not cached)
             let v = '';
             try { v = localStorage.getItem('layout') || ''; } catch (e) { /* ignore */ }
-            if (isNewModel()) return LEGACY_12.indexOf(v) >= 0 ? 'classic' : 'mui';
+            if (isModernLayoutModel()) return LEGACY_12.indexOf(v) >= 0 ? 'classic' : 'mui';
             return v === 'experimental' ? 'mui' : 'classic';
         }
         function isMui() { return getLayout() === 'mui'; }
@@ -208,7 +225,7 @@
         if (!window.jfcompat) window.jfcompat = api;
         return api;
     })();
-    /* end jfcompat 1.0 */
+    /* end jfcompat 1.1 */
     const BUTTON_ID = 'jf-cinema-btn';
     const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js';
     const SCRIPT_VERSION = '20.1';
@@ -290,15 +307,15 @@
     //     sits just above the first of the two)
     //   - 'const MENU_CONFIG = {'
     // If asked for a specific line range as of right now: as of
-    // SCRIPT_VERSION 20.1, SMART_LAUNCH_CONFIG is at lines 433–447, the
-    // two Ambient blocks together are at lines 3249–3306, and
-    // MENU_CONFIG is at lines 3427–3711 — but treat these as a
+    // SCRIPT_VERSION 20.1, SMART_LAUNCH_CONFIG is at lines 450–464, the
+    // two Ambient blocks together are at lines 3266–3323, and
+    // MENU_CONFIG is at lines 3444–3728 — but treat these as a
     // snapshot, not a guarantee; re-locate by the search text above if
     // the version number has changed since.
     //
     // A FOURTH block, EFFECTIVE_SMART_LAUNCH (search for
     // 'const EFFECTIVE_SMART_LAUNCH = {'), sits directly after
-    // SMART_LAUNCH_CONFIG's own closing '};' — at lines 468–482 as of
+    // SMART_LAUNCH_CONFIG's own closing '};' — at lines 485–499 as of
     // this same SCRIPT_VERSION. It is NOT one of the three script blocks
     // the workbook mirrors values into/out of either — it is the plugin-
     // persistence resolution layer (admin-set value if present, else
@@ -308,7 +325,7 @@
     //
     // A FIFTH block, EFFECTIVE_MENU_CONFIG (search for
     // 'const EFFECTIVE_MENU_CONFIG = {'), sits directly after
-    // EFFECTIVE_SMART_LAUNCH's own closing '};' — at lines 522–1435 as
+    // EFFECTIVE_SMART_LAUNCH's own closing '};' — at lines 539–1452 as
     // of this same SCRIPT_VERSION (by far the largest of the six blocks
     // now — 690 of its 817 total fields are Ambient Mode's own
     // per-sequence data, 3 profiles x 10 sequences x 23 fields each).
@@ -332,7 +349,7 @@
     //
     // A SIXTH block, SPREADSHEET_DEPENDENCY_RULES (search for
     // 'const SPREADSHEET_DEPENDENCY_RULES = {'), sits directly after
-    // EFFECTIVE_MENU_CONFIG's own closing '};' — at lines 1477–1545 as of
+    // EFFECTIVE_MENU_CONFIG's own closing '};' — at lines 1494–1562 as of
     // this same SCRIPT_VERSION. It is NOT one of the three script blocks
     // the workbook mirrors values into/out of — Cinema Project's own
     // runtime never reads it — but if the workbook's own build tooling
@@ -1601,9 +1618,9 @@
     // header in the DOM, and its version is not known that early).
 
     // Left-to-right order of the custom header buttons (Random, Autoscroll,
-    // Fullscreen, Cinema), so they line up the same in both layouts no
-    // matter which script runs first.
-    const HEADER_BUTTON_ORDER = ['randomMovieButton', 'jf-scroll-btn', 'jf-fullscreen-btn', 'jf-cinema-btn'];
+    // Fullscreen, Cinema, Destroy), so they line up the same in both layouts
+    // no matter which script runs first.
+    const HEADER_BUTTON_ORDER = ['randomMovieButton', 'jf-scroll-btn', 'jf-fullscreen-btn', 'jf-cinema-btn', 'jf-destroy-btn'];
 
     // In the classic header Random sits in its own wrapper div.
     function headerButtonRank(el) {
@@ -16678,6 +16695,8 @@ import * as THREE from '${THREE_CDN}';
         let muiView = null;
         if (result && result.kind === 'movies' && jfcompat.isMui() && jfcompat.getRoute().name === 'movies') {
             const libraryId = params.get('topParentId');
+            // 10.11 has the first five of the 12.x tabs in the same order
+            // (libraryRoutes.ts 10.11.11:43-71), so one list serves both.
             const tabs = jfcompat.isNewModel()
                 ? ['movies', 'suggestions', 'favorites', 'collections', 'genres', 'studios', 'playlists']
                 : ['movies', 'suggestions', 'trailers', 'favorites', 'collections', 'genres'];

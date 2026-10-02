@@ -2,7 +2,7 @@
 name: "Cinema Project"
 guid: "a6e6b7d2-2f6a-4c7e-9c1a-6d1e3f9b8a11"
 version: "2.0.0.0"
-targetAbi: "12.1.0.0"
+targetAbi: "12.0.0.0"
 framework: "net10.0"
 overview: "Watch and listen to the soul of a movie, a visualized experience you step into like a video game."
 description: >
@@ -20,10 +20,11 @@ owner: "chrissix666"
 artifacts:
   - "CinemaProjectLoader.dll"
 changelog: >
-  2.0.0.0 (Jellyfin 12.1): First build for Jellyfin 12.1, with the same
-  features and settings as 1.4.0.0. Use it together with the Cinema
-  Project script 20.0, which runs on Jellyfin 10.10.7 and 12.1.
-  1.4.0.0 (Jellyfin 10.10.7, targetAbi 10.10.7.0, net8.0): List settings
+  2.0.0.0 (Jellyfin 12.0+): First build for Jellyfin 12.0 and newer, with
+  the same features and settings as 1.4.0.0. Use it together with the
+  Cinema Project script 20.1, which runs on Jellyfin 10.10.7 and 12.0+.
+  1.4.0.0 (Jellyfin 10.10.7, targetAbi 10.10.7.0, net8.0): For Jellyfin
+  10.10.x. Not for 10.11 (use 2.0.0.0 on 12.0+). List settings
   (poster menu tabs, environment and Ambient effects) no longer double after
   a server restart, and deselected entries stay off. The Smart Launch
   checkboxes on the admin page now work like all the others. Quieter log.
