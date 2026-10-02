@@ -291,8 +291,8 @@
     //   - 'const MENU_CONFIG = {'
     // If asked for a specific line range as of right now: as of
     // SCRIPT_VERSION 20.1, SMART_LAUNCH_CONFIG is at lines 433–447, the
-    // two Ambient blocks together are at lines 3239–3296, and
-    // MENU_CONFIG is at lines 3417–3701 — but treat these as a
+    // two Ambient blocks together are at lines 3249–3306, and
+    // MENU_CONFIG is at lines 3427–3711 — but treat these as a
     // snapshot, not a guarantee; re-locate by the search text above if
     // the version number has changed since.
     //
@@ -1640,6 +1640,10 @@
             // Search), so size, round hover/active highlight and colour come
             // from Jellyfin's stylesheet and the active theme, 1:1.
             btn.className = 'headerButton headerButtonRight paper-icon-button-light';
+            // In the tv layout Jellyfin gives its own icon buttons 'show-focus'
+            // (paper-icon-button-light.js 10.10.7/12.1:10-12): they grow to
+            // 1.3x when focused by remote/keyboard (emby-button.scss:120-123).
+            if (document.documentElement.classList.contains('layout-tv')) btn.classList.add('show-focus');
         }
         if (loading) btn.classList.add('jf-cinema-loading');
         // Classic header: place once, as on 10.10.7; re-order only when the
@@ -1906,6 +1910,12 @@
   <div class="msSelect" id="msYears" tabindex="0">All years</div>
   <label id="msStudiosLabel">Studio</label>
   <div class="msSelect" id="msStudios" tabindex="0">All studios</div>
+  <label id="msAudioLanguagesLabel">Audio Languages</label>
+  <div class="msSelect" id="msAudioLanguages" tabindex="0">All languages</div>
+  <label id="msSubtitleLanguagesLabel">Subtitle Languages</label>
+  <div class="msSelect" id="msSubtitleLanguages" tabindex="0">All languages</div>
+  <label id="letterSelectLabel">Name Starts With</label>
+  <select id="letterSelect"><option value="">All</option><option value="#">#</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option><option value="G">G</option><option value="H">H</option><option value="I">I</option><option value="J">J</option><option value="K">K</option><option value="L">L</option><option value="M">M</option><option value="N">N</option><option value="O">O</option><option value="P">P</option><option value="Q">Q</option><option value="R">R</option><option value="S">S</option><option value="T">T</option><option value="U">U</option><option value="V">V</option><option value="W">W</option><option value="X">X</option><option value="Y">Y</option><option value="Z">Z</option></select>
   <label id="msCollectionsLabel">Collections</label>
   <div class="msSelect" id="msCollections" tabindex="0">All collections</div>
   <label id="actorLabel">Actor</label>
@@ -3948,6 +3958,15 @@ import * as THREE from '${THREE_CDN}';
       });
     }
     if (opts.studiosList && opts.studiosList.length) params.Studios = opts.studiosList.join('|');
+    // Language filters exist only on Jellyfin 12.x servers (ItemsController
+    // audioLanguages/subtitleLanguages, comma separated); the Kiosk offers
+    // them only when the server lists languages (fetchFilterOptions).
+    if (opts.audioLanguagesList && opts.audioLanguagesList.length) params.AudioLanguages = opts.audioLanguagesList.join(',');
+    if (opts.subtitleLanguagesList && opts.subtitleLanguagesList.length) params.SubtitleLanguages = opts.subtitleLanguagesList.join(',');
+    // Letter as Jellyfin's alphabet picker sends it (utils/items.ts
+    // getAlphaPickerQuery 10.10.7:116, 12.1:128): '#' = every name before 'A'.
+    if (opts.nameLetter === '#') params.NameLessThan = 'A';
+    else if (opts.nameLetter) params.NameStartsWith = opts.nameLetter;
     if (opts.personId) params.PersonIds = opts.personId;
     let items = [];
     let startIndex = 0;
@@ -4024,11 +4043,12 @@ import * as THREE from '${THREE_CDN}';
   ];
   const multiSelectState = {
     Filters: [], Features: [], Genres: [], OfficialRatings: [], Tags: [], VideoTypes: [], Years: [], Studios: [], Collections: [],
+    AudioLanguages: [], SubtitleLanguages: [],
     EnvMovie: MENU_CONFIG.menu.posters.general.envMovie.default.slice(), EnvTrailer: MENU_CONFIG.menu.posters.general.envTrailer.default.slice(), EnvThemeVideo: MENU_CONFIG.menu.posters.general.envThemeVideo.default.slice(),
     EnvThemeSong: MENU_CONFIG.menu.posters.general.envThemeSong.default.slice(), EnvFanartWall: MENU_CONFIG.menu.posters.general.envFanartWall.default.slice(),
     PosterMenuTabs: MENU_CONFIG.menu.posters.general.posterMenuTabs.default.slice(),
   };
-  let msDynamicOptions = { Genres: [], OfficialRatings: [], Tags: [], Years: [], Studios: [], Collections: [] };
+  let msDynamicOptions = { Genres: [], OfficialRatings: [], Tags: [], Years: [], Studios: [], Collections: [], AudioLanguages: [], SubtitleLanguages: [] };
   const MULTI_SELECT_FIELDS = {
     msFilters: { key: 'Filters', label: 'filters', title: 'Filters', getOptions: () => FILTERS_OPTIONS },
     msFeatures: { key: 'Features', label: 'features', title: 'Features', getOptions: () => FEATURES_OPTIONS },
@@ -4039,6 +4059,8 @@ import * as THREE from '${THREE_CDN}';
     msYears: { key: 'Years', label: 'years', title: 'Years', getOptions: () => msDynamicOptions.Years },
     msStudios: { key: 'Studios', label: 'studios', title: 'Studios', getOptions: () => msDynamicOptions.Studios },
     msCollections: { key: 'Collections', label: 'collections', title: 'Collections', getOptions: () => msDynamicOptions.Collections },
+    msAudioLanguages: { key: 'AudioLanguages', label: 'languages', title: 'Audio Languages', getOptions: () => msDynamicOptions.AudioLanguages },
+    msSubtitleLanguages: { key: 'SubtitleLanguages', label: 'languages', title: 'Subtitle Languages', getOptions: () => msDynamicOptions.SubtitleLanguages },
     msEnvMovie: { key: 'EnvMovie', label: 'effects', title: 'Movie Environment Effects', getOptions: () => ENV_OPTIONS, emptyMeansAll: false, settingKey: 'envMovie' },
     msEnvTrailer: { key: 'EnvTrailer', label: 'effects', title: 'Trailer Environment Effects', getOptions: () => ENV_OPTIONS, emptyMeansAll: false, settingKey: 'envTrailer' },
     msEnvThemeVideo: { key: 'EnvThemeVideo', label: 'effects', title: 'Theme Video Environment Effects', getOptions: () => ENV_OPTIONS, emptyMeansAll: false, settingKey: 'envThemeVideo' },
@@ -4135,9 +4157,21 @@ import * as THREE from '${THREE_CDN}';
   // — it stays usable either way (movie search only fixes the FIRST
   // slot; the rest of the poster wall still follows Sort, same as
   // always).
-  const PANEL_FILTER_MS_KEYS = ['Filters', 'Features', 'Genres', 'OfficialRatings', 'Tags', 'VideoTypes', 'Years', 'Studios', 'Collections'];
+  const PANEL_FILTER_MS_KEYS = ['Filters', 'Features', 'Genres', 'OfficialRatings', 'Tags', 'VideoTypes', 'Years', 'Studios', 'Collections', 'AudioLanguages', 'SubtitleLanguages'];
   function anyPanelFilterActive() {
-    return PANEL_FILTER_MS_KEYS.some((k) => multiSelectState[k] && multiSelectState[k].length > 0) || document.getElementById('actorInput').value.trim().length > 0;
+    return PANEL_FILTER_MS_KEYS.some((k) => multiSelectState[k] && multiSelectState[k].length > 0) || document.getElementById('actorInput').value.trim().length > 0
+      || document.getElementById('letterSelect').value !== '';
+  }
+  // The Kiosk filters that have no console words: both language lists and
+  // the letter. clear = true for the console commands that replace every
+  // filter, otherwise the panel's current values.
+  function ccKioskExtraOpts(clear) {
+    if (clear) return { audioLanguagesList: [], subtitleLanguagesList: [], nameLetter: '' };
+    return {
+      audioLanguagesList: multiSelectState.AudioLanguages,
+      subtitleLanguagesList: multiSelectState.SubtitleLanguages,
+      nameLetter: document.getElementById('letterSelect').value,
+    };
   }
   function applyFilterMovieExclusionVisuals() {
     const movieActive = document.getElementById('movieInput').value.trim().length > 0;
@@ -4149,11 +4183,16 @@ import * as THREE from '${THREE_CDN}';
       if (!PANEL_FILTER_MS_KEYS.includes(cfg.key)) return; // only the Kiosk panel's own 9 — leaves any OTHER multiselect elsewhere in the app (e.g. Environment Effects) untouched
       const el = document.getElementById(fieldId);
       if (!el) return;
-      el.disabled = disableFilters; // not a native <select>, but isRowDisabled (keyboard nav skip) and this field's own click handler both already just check this same property generically
+      el.disabled = disableFilters || el.classList.contains('ccUnavailable'); // not a native <select>, but isRowDisabled (keyboard nav skip) and this field's own click handler both already just check this same property generically
       el.classList.toggle('disabled', disableFilters);
       const labelEl = document.getElementById(fieldId + 'Label');
       if (labelEl) labelEl.classList.toggle('disabled', disableFilters);
     });
+    const letterSelectEl = document.getElementById('letterSelect');
+    letterSelectEl.disabled = disableFilters;
+    letterSelectEl.classList.toggle('disabled', disableFilters);
+    const letterLabelEl = document.getElementById('letterSelectLabel');
+    if (letterLabelEl) letterLabelEl.classList.toggle('disabled', disableFilters);
     const actorInputEl = document.getElementById('actorInput');
     actorInputEl.disabled = disableFilters;
     const actorLabelEl = document.getElementById('actorLabel');
@@ -4173,6 +4212,7 @@ import * as THREE from '${THREE_CDN}';
         updateAllMsSummaries();
         document.getElementById('actorInput').value = '';
         acSelectedPersonId = '';
+        document.getElementById('letterSelect').value = '';
       }
     } else if (anyPanelFilterActive()) {
       document.getElementById('movieInput').value = '';
@@ -4317,8 +4357,12 @@ import * as THREE from '${THREE_CDN}';
     }
   });
   async function fetchFilterOptions() {
-    const [filters, studios, collections] = await Promise.all([
+    const [filters, filters2, studios, collections] = await Promise.all([
       jfGet('/Items/Filters', { userId: session.userId, IncludeItemTypes: 'Movie', Recursive: 'true' }),
+      // Same source as Jellyfin's own filter dialog (FilterButton.tsx 12.1:
+      // useGetQueryFilters, fields AudioLanguages/SubtitleLanguages as
+      // Name/Value pairs). 10.10.x answers without these fields.
+      jfGet('/Items/Filters2', { userId: session.userId, IncludeItemTypes: 'Movie', Recursive: 'true' }).catch(() => ({})),
       jfGet('/Studios', { userId: session.userId, IncludeItemTypes: 'Movie', Recursive: 'true' }),
       // No dedicated "/Collections" list endpoint exists (unlike /Studios) —
       // BoxSets are fetched via the generic Items endpoint, same underlying
@@ -4333,6 +4377,8 @@ import * as THREE from '${THREE_CDN}';
       years: (filters.Years || []).slice().sort((a, b) => b - a),
       studios: (studios.Items || []).map((s) => s.Name).sort(),
       collections: (collections.Items || []).map((c) => ({ id: c.Id, name: c.Name })).sort((a, b) => a.name.localeCompare(b.name)),
+      audioLanguages: (filters2.AudioLanguages || []).filter((l) => l && l.Value).map((l) => ({ value: l.Value, label: l.Name || l.Value })),
+      subtitleLanguages: (filters2.SubtitleLanguages || []).filter((l) => l && l.Value).map((l) => ({ value: l.Value, label: l.Name || l.Value })),
     };
   }
   // Fetches the member movie ids for one BoxSet. Only its own children (not
@@ -7088,7 +7134,7 @@ import * as THREE from '${THREE_CDN}';
           collectionIdsList: [col.Id],
           personId: personId || undefined,
           layout: state.wallLayout || currentWallForCollection.layout, startWall: state.wallStart || currentWallForCollection.startWall, repeatMode: state.wallRepeat || currentWallForCollection.repeatMode, gapPosition: state.wallGap || currentWallForCollection.gapPosition,
-        }, {});
+        }, ccKioskExtraOpts(true));
         if (!personId) { document.getElementById('actorInput').value = ''; acSelectedPersonId = ''; }
         await ccApplyFilterReload(opts, { kind: personId ? 'person' : undefined });
       }
@@ -7113,6 +7159,7 @@ import * as THREE from '${THREE_CDN}';
         // as active — a display-only mismatch, not a data loss, but a
         // mismatch all the same.
         PANEL_FILTER_MS_KEYS.forEach((key) => { multiSelectState[key] = []; });
+        document.getElementById('letterSelect').value = '';
         document.getElementById('actorInput').value = '';
         acSelectedPersonId = '';
         const opts = Object.assign({ sort: document.getElementById('sortSelect').value + ':' + document.getElementById('sortDirSelect').value }, ccCurrentWallOpts());
@@ -7156,7 +7203,7 @@ import * as THREE from '${THREE_CDN}';
         collectionIdsList: multiSelectState.Collections,
         studiosList: multiSelectState.Studios,
         personId: acSelectedPersonId || undefined,
-      }, ccCurrentWallOpts());
+      }, ccCurrentWallOpts(), ccKioskExtraOpts(false));
       await ccApplyFilterReload(opts, {});
       return;
     }
@@ -7186,7 +7233,7 @@ import * as THREE from '${THREE_CDN}';
         studiosList: state.studiosList,
         personId: personId || undefined,
         layout: state.wallLayout || currentWallForRandom.layout, startWall: state.wallStart || currentWallForRandom.startWall, repeatMode: state.wallRepeat || currentWallForRandom.repeatMode, gapPosition: state.wallGap || currentWallForRandom.gapPosition,
-      }, {});
+      }, ccKioskExtraOpts(true));
       if (!personId) { document.getElementById('actorInput').value = ''; acSelectedPersonId = ''; }
       if (state.randomWantsPage) {
         // Direct jump to a random page's own start bounds — reuses the
@@ -7267,7 +7314,7 @@ import * as THREE from '${THREE_CDN}';
         studiosList: hasAnyFilterWord ? state.studiosList : multiSelectState.Studios,
         personId: hasAnyFilterWord ? (personId || undefined) : (personId || acSelectedPersonId || undefined),
         layout: state.wallLayout || currentWallForFilter.layout, startWall: state.wallStart || currentWallForFilter.startWall, repeatMode: state.wallRepeat || currentWallForFilter.repeatMode, gapPosition: state.wallGap || currentWallForFilter.gapPosition,
-      }, {});
+      }, ccKioskExtraOpts(!!hasAnyFilterWord));
       if (hasAnyFilterWord && !personId) { document.getElementById('actorInput').value = ''; acSelectedPersonId = ''; }
       await ccApplyFilterReload(opts, { kind: (personId || (!hasAnyFilterWord && acSelectedPersonId)) ? 'person' : undefined });
       return;
@@ -9270,7 +9317,19 @@ import * as THREE from '${THREE_CDN}';
   }
   function openLibraryUrl(url) {
     if (libraryItemOpensIn === 'origintab' && window.opener && !window.opener.closed) {
-      window.opener.location.href = url;
+      // Change only the part after '#' when the original tab is the running
+      // Jellyfin Web app: its router then shows the item inside the app.
+      // Assigning the whole href ('/web/#/details...' while the tab sits on
+      // '/web/index.html') reloaded the complete app (measured 10.10.7).
+      let sameApp = false;
+      try {
+        const openerPath = window.opener.location.pathname;
+        sameApp = window.opener.location.origin === new URL(url).origin
+          && (openerPath.endsWith('/web/') || openerPath.endsWith('/web/index.html'));
+      } catch (err) { sameApp = false; }
+      const hashAt = url.indexOf('#');
+      if (sameApp && hashAt >= 0) window.opener.location.hash = url.slice(hashAt);
+      else window.opener.location.href = url;
     } else {
       window.open(url, '_blank');
     }
@@ -12211,6 +12270,9 @@ import * as THREE from '${THREE_CDN}';
     { id: 'msYears', type: 'multiselect' },
     { id: 'msStudios', type: 'multiselect' },
     { id: 'msCollections', type: 'multiselect' },
+    { id: 'msAudioLanguages', type: 'multiselect' },
+    { id: 'msSubtitleLanguages', type: 'multiselect' },
+    { id: 'letterSelect', type: 'select' },
     { id: 'actorInput', type: 'text' },
     { id: 'movieInput', type: 'text' },
     { id: 'panelResetAll', type: 'button' },
@@ -12766,6 +12828,7 @@ import * as THREE from '${THREE_CDN}';
   }
   repeatModeSelect.addEventListener('change', updateGapPositionState);
   updateGapPositionState();
+  document.getElementById('letterSelect').addEventListener('change', () => updateFilterMovieExclusion('filter'));
   document.getElementById('panelResetAll').addEventListener('click', () => {
     sortSelect.value = MENU_CONFIG.kiosk.search.sortBy.default;
     sortDirSelect.value = MENU_CONFIG.kiosk.search.sortOrder.default;
@@ -12776,6 +12839,7 @@ import * as THREE from '${THREE_CDN}';
     updateGapPositionState();
     Object.values(MULTI_SELECT_FIELDS).forEach((cfg) => { if (cfg.emptyMeansAll !== false) multiSelectState[cfg.key] = []; });
     updateAllMsSummaries();
+    document.getElementById('letterSelect').value = '';
     document.getElementById('actorInput').value = '';
     acSelectedPersonId = '';
     document.getElementById('movieInput').value = '';
@@ -16110,6 +16174,21 @@ import * as THREE from '${THREE_CDN}';
     msDynamicOptions.Years = options.years.map((y) => ({ value: String(y), label: String(y) }));
     msDynamicOptions.Studios = options.studios.map((s) => ({ value: s, label: s }));
     msDynamicOptions.Collections = options.collections.map((c) => ({ value: c.id, label: c.name }));
+    msDynamicOptions.AudioLanguages = options.audioLanguages;
+    msDynamicOptions.SubtitleLanguages = options.subtitleLanguages;
+    // A language field without languages (Jellyfin 10.10.x, or a library
+    // without language tags) is hidden and skipped by keyboard/controller
+    // navigation (isRowDisabled), the way Jellyfin hides an empty section.
+    [['msAudioLanguages', options.audioLanguages], ['msSubtitleLanguages', options.subtitleLanguages]].forEach(([fieldId, list]) => {
+      const fieldEl = document.getElementById(fieldId);
+      const labelEl = document.getElementById(fieldId + 'Label');
+      const unavailable = !list.length;
+      fieldEl.classList.toggle('ccUnavailable', unavailable);
+      fieldEl.style.display = unavailable ? 'none' : '';
+      if (labelEl) labelEl.style.display = unavailable ? 'none' : '';
+      if (unavailable) fieldEl.disabled = true;
+    });
+    applyFilterMovieExclusionVisuals();
     updateAllMsSummaries();
   }).catch(() => {});
   document.getElementById('panelApply').addEventListener('click', async () => {
@@ -16185,6 +16264,9 @@ import * as THREE from '${THREE_CDN}';
         videoTypesList: multiSelectState.VideoTypes.map((v) => VIDEOTYPE_OPTIONS.find((o) => o.value === v)).filter(Boolean),
         studiosList: multiSelectState.Studios,
         collectionIdsList: multiSelectState.Collections,
+        audioLanguagesList: multiSelectState.AudioLanguages,
+        subtitleLanguagesList: multiSelectState.SubtitleLanguages,
+        nameLetter: document.getElementById('letterSelect').value,
         personId: personId,
         layout: document.getElementById('layoutSelect').value,
         startWall: document.getElementById('startWallSelect').value,
@@ -16324,6 +16406,9 @@ import * as THREE from '${THREE_CDN}';
     if (launchContext.extraFilters) baseOpts.filtersList = mergeUnique(baseOpts.filtersList, launchContext.extraFilters);
     if (launchContext.extraFeatures) baseOpts.featuresList = mergeUnique(baseOpts.featuresList, launchContext.extraFeatures);
     if (launchContext.extraStudios) baseOpts.studiosList = mergeUnique(baseOpts.studiosList, launchContext.extraStudios);
+    if (launchContext.extraAudioLanguages) baseOpts.audioLanguagesList = mergeUnique(baseOpts.audioLanguagesList, launchContext.extraAudioLanguages);
+    if (launchContext.extraSubtitleLanguages) baseOpts.subtitleLanguagesList = mergeUnique(baseOpts.subtitleLanguagesList, launchContext.extraSubtitleLanguages);
+    if (launchContext.nameLetter) baseOpts.nameLetter = launchContext.nameLetter;
     if (launchContext.extraVideoTypes) {
         // fetchMovies expects videoTypesList as the FULL option objects
         // (matching VIDEOTYPE_OPTIONS' own {value,label,param,paramValue}
@@ -16375,6 +16460,9 @@ import * as THREE from '${THREE_CDN}';
     if (opts.filtersList) multiSelectState.Filters = opts.filtersList.slice();
     if (opts.featuresList) multiSelectState.Features = opts.featuresList.slice();
     if (opts.videoTypesList) multiSelectState.VideoTypes = opts.videoTypesList.map((o) => o.value);
+    if (opts.audioLanguagesList) multiSelectState.AudioLanguages = opts.audioLanguagesList.slice();
+    if (opts.subtitleLanguagesList) multiSelectState.SubtitleLanguages = opts.subtitleLanguagesList.slice();
+    if (typeof opts.nameLetter === 'string') document.getElementById('letterSelect').value = opts.nameLetter;
     if (opts.sort) {
       const [sortByVal, sortOrderVal] = opts.sort.split(':');
       const sortSelectEl = document.getElementById('sortSelect');
@@ -16520,6 +16608,21 @@ import * as THREE from '${THREE_CDN}';
             if (rect.top < bestTop - 1 || (Math.abs(rect.top - bestTop) <= 1 && rect.left < bestLeft)) {
                 best = card; bestTop = rect.top; bestLeft = rect.left;
             }
+        }
+        if (best) return best.getAttribute('data-id');
+        // List view (view setting 'List'): Jellyfin draws rows instead of
+        // cards, '.listItem' with data-id AND data-type (listview.js
+        // 10.10.7:218/252, 12.1:227/261) inside the visible page. Menus
+        // (action sheets) also use '.listItem[data-id]' but carry no
+        // data-type and live outside the page. Same rule as for cards: the
+        // topmost row that is fully visible and not covered by the header.
+        for (const row of document.querySelectorAll('.page:not(.hide) .listItem[data-id][data-type]')) {
+            const rect = row.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) continue;
+            if (rect.top < 0 || rect.bottom > window.innerHeight || rect.left < 0 || rect.right > window.innerWidth) continue;
+            const atCenter = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+            if (!atCenter || !(atCenter === row || row.contains(atCenter))) continue;
+            if (rect.top < bestTop - 1) { best = row; bestTop = rect.top; }
         }
         return best ? best.getAttribute('data-id') : null;
     }
@@ -16818,6 +16921,12 @@ import * as THREE from '${THREE_CDN}';
                     if (joined(f.Status, ',')) filterObj.Filters = joined(f.Status, ',');
                     if (joined(f.VideoTypes, ',')) filterObj.VideoTypes = joined(f.VideoTypes, ',');
                     if (Array.isArray(f.StudioIds) && f.StudioIds.length) filterObj.StudioIds = f.StudioIds.slice();
+                    // 12.x only (types/library.ts 12.1:48-49); sent comma separated
+                    if (Array.isArray(f.AudioLanguages) && f.AudioLanguages.length) filterObj.AudioLanguages = f.AudioLanguages.slice();
+                    if (Array.isArray(f.SubtitleLanguages) && f.SubtitleLanguages.length) filterObj.SubtitleLanguages = f.SubtitleLanguages.slice();
+                    // the alphabet picker's letter, applied by Jellyfin to every
+                    // fetch of the view (useFetchItems getAlphaPickerQuery)
+                    if (typeof settings.Alphabet === 'string' && settings.Alphabet) filterObj.Alphabet = settings.Alphabet;
                     (f.Features || []).concat(f.VideoBasicFilter || []).forEach((name) => { filterObj[name] = true; });
                     out.filterObj = Object.keys(filterObj).length ? filterObj : null;
                 } catch (err) { /* nothing usable stored */ }
@@ -16916,6 +17025,19 @@ import * as THREE from '${THREE_CDN}';
                     const studioNames = studios.filter((studio) => studio && studio.Name).map((studio) => studio.Name);
                     if (studioNames.length) result.extraStudios = studioNames;
                 }
+                if (lsFilters.AudioLanguages) result.extraAudioLanguages = lsFilters.AudioLanguages.slice();
+                if (lsFilters.SubtitleLanguages) result.extraSubtitleLanguages = lsFilters.SubtitleLanguages.slice();
+                // Letter: MUI keeps it in the view's settings; the classic
+                // alphabet picker keeps it only on the page (not saved,
+                // userSettings.js filter whitelist), so it is read from the
+                // selected picker button (alphaPicker.js 10.10.7/12.1:14).
+                let letter = lsFilters.Alphabet || null;
+                if (!letter && !muiView && !plainTab) {
+                    const picked = document.querySelector('.page:not(.hide) .alphaPicker .alphaPickerButton-selected');
+                    const value = picked ? picked.getAttribute('data-value') : null;
+                    if (value && /^[#A-Za-z]$/.test(value)) letter = value;
+                }
+                if (letter) result.nameLetter = letter === '#' ? '#' : letter.toUpperCase();
             }
         }
         return result;
