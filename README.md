@@ -62,7 +62,7 @@ Cinema Project needs a real desktop browser: WebGL2, three.js, mouse-driven look
 
 Specifically, this means the Jellyfin Web client in a desktop browser. It does **not** work in the official Jellyfin apps for Android, webOS, other TV platforms, or desktop, since none of those run the Jellyfin Web page this script attaches itself to.
 
-- Jellyfin Web 10.10.7 (other versions untested)
+- Jellyfin Web 10.10.7 or 12.1 (both tested; other versions untested)
 - Desktop browser, Chromium-based (tested: Google Chrome; WebGL2 support included by default)
 - Windows 11 (tested environment)
 - Full controller support is built in and tested; an Xbox Elite Series 2 controller was used for testing
@@ -70,7 +70,7 @@ Specifically, this means the Jellyfin Web client in a desktop browser. It does *
 
 Other operating systems, browsers, or Jellyfin versions may work but haven't been tested.
 
-A quick word on that Jellyfin version: yes, 10.10.7 is no longer the newest release. It's simply what I still run myself, it's still widely used, and the newer versions broke completely on my own setup. I'm sorry for not building this against the latest Jellyfin, but that's where things stand. Forks that bring this up to date for a newer version are very welcome.
+A quick word on Jellyfin versions: Cinema Project was built on 10.10.7, which is still what I run myself, and it now runs on Jellyfin 12.1 as well. It's one and the same script for both. The plugin comes as two builds, 1.x for 10.10.7 and 2.x for 12.1, and Jellyfin's plugin catalog automatically offers the one that matches your server. Versions in between (like 10.11) haven't been tested.
 
 ### Artwork & metadata
 
@@ -99,7 +99,7 @@ One more thing worth knowing either way: Cinema opens in its own new browser tab
    ```
    https://raw.githubusercontent.com/chrissix666/Jellyfin-Cinema-Project/main/manifest.json
    ```
-2. Go to **Catalog**, find **Cinema Project** (category: Experimental), install it, and restart the Jellyfin server.
+2. Go to **Catalog**, find **Cinema Project** (category: Experimental), install it, and restart the Jellyfin server. Jellyfin picks the build that matches your server on its own: 1.x for 10.10.7, 2.x for 12.1.
 3. Reload Jellyfin Web. A Cinema button appears in the header on supported desktop browsers.
 
 **Where the Cinema button shows up in the Jellyfin Web header**
