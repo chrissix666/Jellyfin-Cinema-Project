@@ -211,7 +211,7 @@
     /* end jfcompat 1.0 */
     const BUTTON_ID = 'jf-cinema-btn';
     const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js';
-    const SCRIPT_VERSION = '20.0';
+    const SCRIPT_VERSION = '20.1';
     // Cinema Project needs a real desktop browser -- WebGL2/three.js,
     // mouse-driven look controls, a keyboard console. None of that
     // works on a phone, tablet, or TV, so the button (and therefore
@@ -290,7 +290,7 @@
     //     sits just above the first of the two)
     //   - 'const MENU_CONFIG = {'
     // If asked for a specific line range as of right now: as of
-    // SCRIPT_VERSION 20.0, SMART_LAUNCH_CONFIG is at lines 433–447, the
+    // SCRIPT_VERSION 20.1, SMART_LAUNCH_CONFIG is at lines 433–447, the
     // two Ambient blocks together are at lines 3239–3296, and
     // MENU_CONFIG is at lines 3417–3701 — but treat these as a
     // snapshot, not a guarantee; re-locate by the search text above if
@@ -16323,6 +16323,7 @@ import * as THREE from '${THREE_CDN}';
     if (launchContext.extraRatings) baseOpts.ratingsList = mergeUnique(baseOpts.ratingsList, launchContext.extraRatings);
     if (launchContext.extraFilters) baseOpts.filtersList = mergeUnique(baseOpts.filtersList, launchContext.extraFilters);
     if (launchContext.extraFeatures) baseOpts.featuresList = mergeUnique(baseOpts.featuresList, launchContext.extraFeatures);
+    if (launchContext.extraStudios) baseOpts.studiosList = mergeUnique(baseOpts.studiosList, launchContext.extraStudios);
     if (launchContext.extraVideoTypes) {
         // fetchMovies expects videoTypesList as the FULL option objects
         // (matching VIDEOTYPE_OPTIONS' own {value,label,param,paramValue}
@@ -16522,6 +16523,16 @@ import * as THREE from '${THREE_CDN}';
         }
         return best ? best.getAttribute('data-id') : null;
     }
+    // Every Smart Launch lookup runs between the click and window.open(), and
+    // Chrome only lets window.open() through while the click still counts as
+    // a user gesture (transient activation, about 5 s). So each lookup gets
+    // a hard limit; a lookup that runs out simply counts as "nothing found".
+    const SMART_LAUNCH_FETCH_TIMEOUT_MS = 2000;
+    function fetchWithTimeout(url, options) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), SMART_LAUNCH_FETCH_TIMEOUT_MS);
+        return fetch(url, Object.assign({}, options, { signal: controller.signal })).finally(() => clearTimeout(timer));
+    }
     async function detectSmartLaunchContext(apiClient) {
         // The master switch — if it's off, Smart Launch is completely
         // inert, regardless of what any individual category checkbox
@@ -16581,6 +16592,25 @@ import * as THREE from '${THREE_CDN}';
             muiView = { key: tab + ' - ' + libraryId, carry: tab === 'movies' || tab === 'favorites' };
             if (tab === 'favorites') result = { kind: 'favorites' };
         }
+        // The classic Movies page (10.10.x desktop/mobile/tv, 12.x
+        // desktop-legacy/mobile-legacy/tv) switches tabs WITHOUT changing the
+        // URL: '?tab=' is read only when the page loads (moviesrecommended.js
+        // 10.10.7:377, 12.1 apps/legacy:366). So the open tab is read from the
+        // page itself: the visible .pageTabContent marked is-active. Tab order
+        // as in getTabs() (10.10.7:229-242 with Trailers, 12.1 legacy:230-241
+        // without). classicTab stays null everywhere else.
+        let classicTab = null;
+        if (result && result.kind === 'movies' && !muiView && !jfcompat.isMui() && jfcompat.getRoute().name === 'movies') {
+            const tabs = jfcompat.isNewModel()
+                ? ['movies', 'suggestions', 'favorites', 'collections', 'genres']
+                : ['movies', 'suggestions', 'trailers', 'favorites', 'collections', 'genres'];
+            const active = document.querySelector('.page:not(.hide) .pageTabContent.is-active');
+            classicTab = (active && tabs[parseInt(active.getAttribute('data-index'), 10)]) || 'movies';
+            if (classicTab === 'favorites') result = { kind: 'favorites' };
+        }
+        // Tabs that are not movie grids (suggestions, trailers, collections,
+        // genres, ...) open the library plainly: no start card, no sort/filter.
+        const plainTab = (muiView && !muiView.carry) || (classicTab !== null && classicTab !== 'movies' && classicTab !== 'favorites');
         // Scroll-position starting point — whichever card is currently
         // FULLY visible, topmost-leftmost, on screen becomes the Poster
         // Wall's own starting point, resuming roughly where scrolling
@@ -16592,7 +16622,7 @@ import * as THREE from '${THREE_CDN}';
         // movie grid to begin with, and NOT the movie-detail "backtrack"
         // case further down, which already has its own specific
         // starting movie for a different reason entirely.
-        if (result && EFFECTIVE_SMART_LAUNCH.scroll && !(muiView && !muiView.carry)) {
+        if (result && EFFECTIVE_SMART_LAUNCH.scroll && !plainTab) {
             // No artificial delay here — an earlier attempt added one
             // (up to a flat 3 seconds) suspecting a timing/repositioning
             // race, but the REAL cause turned out to be something else
@@ -16617,7 +16647,7 @@ import * as THREE from '${THREE_CDN}';
             try {
                 const userId = apiClient.getCurrentUserId();
                 const url = apiClient.serverAddress() + '/Items/' + detailsId + '?userId=' + userId + '&ApiKey=' + apiClient.accessToken();
-                const res = await fetch(url);
+                const res = await fetchWithTimeout(url);
                 const item = res.ok ? await res.json() : null;
                 if (item && item.Type === 'BoxSet') result = { kind: 'collection', id: detailsId };
                 else if (item && item.Type === 'Person') result = { kind: 'person', id: detailsId };
@@ -16675,41 +16705,38 @@ import * as THREE from '${THREE_CDN}';
             // sort/filter data, whatever its mode suffix turns out to be.
             const topParentId = params.get('parentId') || params.get('topParentId');
             const userId = apiClient.getCurrentUserId();
+            // Classic pages: where Jellyfin itself READS each key
+            // (userSettings.js, identical in 10.10.7 and 12.1):
+            //  - Movies page sort  '{topParentId}-{mode}'   -> get(key)        (10.10.7:544, 12.1 same)
+            //  - list.js sort      '{key}-sortby/-sortorder' -> getFilter=get(k, true) (10.10.7:643-658)
+            //  - list.js filters   '{key}-filter-{field}'    -> getFilter=get(k, true) (list.js 10.10.7:964-975)
+            //  - Movies page filters '{…}-filter'            -> get(k, false)   (10.10.7:545)
+            // get(name) with enableOnServer !== false returns ONLY the server's
+            // DisplayPreferences ('usersettings', client 'emby') CustomPrefs[name]
+            // once they are loaded - no fall back to localStorage (10.10.7:116-122);
+            // without them (not loaded) it reads localStorage. Rebuilt exactly:
+            // server value when the server answered, else localStorage. MUI pages
+            // keep everything in localStorage, so the lookup is skipped there.
+            let serverPrefs = null;
+            if (!muiView) {
+                try {
+                    const prefRes = await fetchWithTimeout(apiClient.serverAddress() + '/DisplayPreferences/usersettings?userId=' + userId + '&client=emby',
+                        { headers: { 'Authorization': 'MediaBrowser Token="' + apiClient.accessToken() + '"' } });
+                    if (prefRes.ok) serverPrefs = (await prefRes.json()).CustomPrefs || {};
+                } catch (err) { serverPrefs = null; }
+            }
+            const pref = (name, onServer) => (onServer && serverPrefs
+                ? (serverPrefs[name] != null ? serverPrefs[name] : null)
+                : localStorage.getItem(userId + '-' + name));
             function readExactLsQuerySettings(mode) {
                 try {
-                    const base = userId + '-' + topParentId + '-' + mode;
-                    const sortRaw = localStorage.getItem(base);
-                    const filterRaw = localStorage.getItem(base + '-filter');
+                    const sortRaw = pref(topParentId + '-' + mode, true);
+                    const filterRaw = pref(topParentId + '-' + mode + '-filter', false);
                     return {
                         sortObj: sortRaw ? JSON.parse(sortRaw) : null,
                         filterObj: filterRaw ? JSON.parse(filterRaw) : null,
                     };
                 } catch (err) { return { sortObj: null, filterObj: null }; }
-            }
-            // Only used as a LAST resort for the general Movies view,
-            // whose exact mode literal isn't confirmed — deliberately
-            // excludes any key ending in '-favorites' so a scan run
-            // while actually viewing Movies never accidentally picks up
-            // the person's separately-stored Favorites sort/filter
-            // instead (both live under the same topParentId, differing
-            // only by mode suffix).
-            function scanLsQuerySettingsExcluding(excludeModes) {
-                if (!topParentId) return { sortObj: null, filterObj: null };
-                const prefix = userId + '-' + topParentId + '-';
-                try {
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const storageKey = localStorage.key(i);
-                        if (!storageKey || !storageKey.startsWith(prefix) || storageKey.endsWith('-filter') || storageKey.endsWith('-view')) continue;
-                        if (excludeModes.some((m) => storageKey === prefix + m)) continue;
-                        let sortObj = null;
-                        try { sortObj = JSON.parse(localStorage.getItem(storageKey)); } catch (err) { continue; }
-                        if (!sortObj || !sortObj.SortBy) continue;
-                        let filterObj = null;
-                        try { filterObj = JSON.parse(localStorage.getItem(storageKey + '-filter')); } catch (err) { /* fine, filters just stay empty */ }
-                        return { sortObj, filterObj };
-                    }
-                } catch (err) { /* localStorage unavailable in this shape */ }
-                return { sortObj: null, filterObj: null };
             }
             // Shared by Favorites AND Genre/Studio/Person/Tag — confirmed
             // against list.js's own ItemsView.getSettingsKey(): a
@@ -16740,8 +16767,8 @@ import * as THREE from '${THREE_CDN}';
                 const settingsKey = computeListJsSettingsKey(kind);
                 const out = { sortObj: null, filterObj: null };
                 try {
-                    const sortByRaw = localStorage.getItem(userId + '-' + settingsKey + '-sortby');
-                    const sortOrderRaw = localStorage.getItem(userId + '-' + settingsKey + '-sortorder');
+                    const sortByRaw = pref(settingsKey + '-sortby', true);
+                    const sortOrderRaw = pref(settingsKey + '-sortorder', true);
                     if (sortByRaw) out.sortObj = { SortBy: sortByRaw, SortOrder: sortOrderRaw === 'Descending' ? 'Descending' : 'Ascending' };
                     // list.js stores each filter as its OWN flat key
                     // ('{key}-filter-IsPlayed', '{key}-filter-HasSubtitles',
@@ -16753,7 +16780,7 @@ import * as THREE from '${THREE_CDN}';
                     // Has*/Is*/VideoTypes fields) so the rest of this
                     // function can treat both sources identically,
                     // regardless of which one actually supplied them.
-                    const gf = (field) => localStorage.getItem(userId + '-' + settingsKey + '-filter-' + field);
+                    const gf = (field) => pref(settingsKey + '-filter-' + field, true);
                     const filterObj = {};
                     const combinedFilters = ['IsPlayed', 'IsUnplayed', 'IsResumable', 'IsFavorite'].filter((f) => gf(f) === 'true');
                     if (combinedFilters.length) filterObj.Filters = combinedFilters.join(',');
@@ -16790,6 +16817,7 @@ import * as THREE from '${THREE_CDN}';
                     if (joined(f.OfficialRatings, '|')) filterObj.OfficialRatings = joined(f.OfficialRatings, '|');
                     if (joined(f.Status, ',')) filterObj.Filters = joined(f.Status, ',');
                     if (joined(f.VideoTypes, ',')) filterObj.VideoTypes = joined(f.VideoTypes, ',');
+                    if (Array.isArray(f.StudioIds) && f.StudioIds.length) filterObj.StudioIds = f.StudioIds.slice();
                     (f.Features || []).concat(f.VideoBasicFilter || []).forEach((name) => { filterObj[name] = true; });
                     out.filterObj = Object.keys(filterObj).length ? filterObj : null;
                 } catch (err) { /* nothing usable stored */ }
@@ -16798,6 +16826,13 @@ import * as THREE from '${THREE_CDN}';
             let lsResult = { sortObj: null, filterObj: null };
             if (muiView) {
                 if (muiView.carry) lsResult = readMuiLibrarySettings(muiView.key);
+            } else if (plainTab) {
+                // a non-grid classic tab: nothing to carry over
+            } else if (classicTab === 'favorites') {
+                // the Favorites tab of the classic Movies page keeps its own
+                // sort/filter under mode 'favorites' (moviesrecommended.js
+                // 10.10.7:328, 12.1 legacy same)
+                lsResult = readExactLsQuerySettings('favorites');
             } else if (result.kind === 'favorites') {
                 // The confirmed real URL routes through list.js, not the
                 // Movies-tab mechanism — tried first. The old exact
@@ -16809,13 +16844,12 @@ import * as THREE from '${THREE_CDN}';
                     lsResult = readExactLsQuerySettings('favorites');
                 }
             } else if (topParentId && result.kind === 'movies') {
-                for (const mode of ['movies', 'all', '']) {
-                    const attempt = readExactLsQuerySettings(mode);
-                    if (attempt.sortObj || attempt.filterObj) { lsResult = attempt; break; }
-                }
-                if (!lsResult.sortObj && !lsResult.filterObj) {
-                    lsResult = scanLsQuerySettingsExcluding(['favorites']);
-                }
+                // The Movies tab saves under mode 'movies' (movies.js
+                // 10.10.7:273/303, 12.1 legacy:283/313); Jellyfin reads only
+                // that key. The former guesses ('all', '' and a scan over every
+                // '{topParentId}-*' key) could pick up the Collections/Genres
+                // tab's own sort ('…-moviecollections', '…-moviegenres').
+                lsResult = readExactLsQuerySettings('movies');
             } else if (result.kind === 'genre' || result.kind === 'studio' || result.kind === 'tag' || result.kind === 'person') {
                 lsResult = readListJsQuerySettings(result.kind);
             }
@@ -16870,6 +16904,18 @@ import * as THREE from '${THREE_CDN}';
                     if (vt.includes('Dvd')) extraVideoTypes.push('dvd');
                 }
                 if (extraVideoTypes.length) result.extraVideoTypes = extraVideoTypes;
+                // MUI studio filter: stored as ids, Cinema filters studios by
+                // name (fetchMovies sends Studios=name|name) - one lookup each.
+                if (Array.isArray(lsFilters.StudioIds) && lsFilters.StudioIds.length) {
+                    const studios = await Promise.all(lsFilters.StudioIds.map((studioId) =>
+                        fetchWithTimeout(apiClient.serverAddress() + '/Items/' + studioId + '?userId=' + userId + '&ApiKey=' + apiClient.accessToken())
+                            .then((studioRes) => (studioRes.ok ? studioRes.json() : null))
+                            .catch(() => null)));
+                    // a studio that is gone, not visible to this user or too
+                    // slow is left out, as if it had not been selected
+                    const studioNames = studios.filter((studio) => studio && studio.Name).map((studio) => studio.Name);
+                    if (studioNames.length) result.extraStudios = studioNames;
+                }
             }
         }
         return result;
