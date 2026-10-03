@@ -4386,12 +4386,30 @@ import * as THREE from '${THREE_CDN}';
       // mechanism the official Jellyfin web client uses to list them.
       jfGet('/Items', { userId: session.userId, IncludeItemTypes: 'BoxSet', Recursive: 'true', SortBy: 'SortName' }).catch(() => ({ Items: [] })),
     ]);
+    // 12.x answers /Items/Filters without parentId with empty lists: it
+    // limits the query to the user's root folder as AncestorIds, which no
+    // item has (FilterController.cs 12.0/12.1:85), while 10.10.x/10.11 list
+    // the root folder's items (10.10.7/10.11.11:91). Then the lists are
+    // asked per library view and merged; a server that already answered
+    // for the root is not asked again, so 10.10.x stays as it was.
+    let filtersAll = filters;
+    if (!['Genres', 'Tags', 'OfficialRatings', 'Years'].some((k) => (filters[k] || []).length)) {
+      const views = await jfGet('/UserViews', { userId: session.userId }).catch(() => ({ Items: [] }));
+      // views that cannot hold movies are skipped; IncludeItemTypes=Movie
+      // keeps series genres/tags out of the lists either way
+      const NO_MOVIES = ['tvshows', 'music', 'musicvideos', 'books', 'photos', 'livetv', 'playlists'];
+      const movieViews = (views.Items || []).filter((v) => NO_MOVIES.indexOf(v.CollectionType) < 0);
+      const perView = await Promise.all(movieViews.map((v) =>
+        jfGet('/Items/Filters', { userId: session.userId, parentId: v.Id, IncludeItemTypes: 'Movie', Recursive: 'true' }).catch(() => ({}))));
+      const union = (key) => Array.from(new Set(perView.flatMap((f) => (f[key] || []).map((x) => (typeof x === 'string' || typeof x === 'number' ? x : x.Name)))));
+      filtersAll = { Genres: union('Genres'), Tags: union('Tags'), OfficialRatings: union('OfficialRatings'), Years: union('Years') };
+    }
     const asStrings = (arr) => (arr || []).map((v) => (typeof v === 'string' ? v : v.Name)).sort();
     return {
-      genres: asStrings(filters.Genres),
-      tags: asStrings(filters.Tags),
-      ratings: asStrings(filters.OfficialRatings),
-      years: (filters.Years || []).slice().sort((a, b) => b - a),
+      genres: asStrings(filtersAll.Genres),
+      tags: asStrings(filtersAll.Tags),
+      ratings: asStrings(filtersAll.OfficialRatings),
+      years: (filtersAll.Years || []).slice().sort((a, b) => b - a),
       studios: (studios.Items || []).map((s) => s.Name).sort(),
       collections: (collections.Items || []).map((c) => ({ id: c.Id, name: c.Name })).sort((a, b) => a.name.localeCompare(b.name)),
       audioLanguages: (filters2.AudioLanguages || []).filter((l) => l && l.Value).map((l) => ({ value: l.Value, label: l.Name || l.Value })),
