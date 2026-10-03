@@ -12,41 +12,41 @@
                 "version": "2.0.0.0",
                 "targetAbi": "12.0.0.0",
                 "sourceUrl": "https://github.com/chrissix666/Jellyfin-Cinema-Project/releases/download/v2.0.0.0/Cinema.Project_2.0.0.0_jellyfin-12.x.zip",
-                "checksum": "d1626c2535d5c0a4f58229eeb2bf56fe",
+                "checksum": "ecf07b5902aa5b659be271586ce82455",
                 "timestamp": "2026-10-02T00:00:00Z",
-                "changelog": "(Jellyfin 12.0+) First build for Jellyfin 12.0 and newer, with the same features and settings as 1.4.0.0. Use it together with the Cinema Project script 20.1, which runs on Jellyfin 10.10.7 and 12.0+."
+                "changelog": "Release for Jellyfin 12.0+"
             },
             {
                 "version": "1.4.0.0",
                 "targetAbi": "10.10.7.0",
                 "sourceUrl": "https://github.com/chrissix666/Jellyfin-Cinema-Project/releases/download/v1.4.0.0/Cinema.Project_1.4.0.0_jellyfin-10.10.7.zip",
-                "checksum": "4307f4badde732bfc48129a2cb61f3a6",
+                "checksum": "fbfe1196d1c9467312f016e3a21b50e6",
                 "timestamp": "2026-10-02T00:00:00Z",
-                "changelog": "For Jellyfin 10.10.7. Not for 10.11 (use 2.0.0.0 on 12.0+). (Jellyfin 10.10.7) List settings (poster menu tabs, environment and Ambient effects) no longer double after a server restart, and deselected entries stay off. The Smart Launch checkboxes on the admin page now work like all the others. Quieter log. Use it together with the Cinema Project script 20.0."
+                "changelog": "Release for Jellyfin 10.10.7"
             },
             {
                 "version": "1.3.1.0",
-                "targetAbi": "10.10.0.0",
+                "targetAbi": "10.10.7.0",
                 "sourceUrl": "https://github.com/chrissix666/Jellyfin-Cinema-Project/releases/download/v1.3.1.0/Cinema.Project_1.3.1.0_jellyfin-10.10.7.zip",
-                "checksum": "ca22aa56dc17a6b74fe5d2bee10884a6",
+                "checksum": "0939d853f9c918ecd9759cea3c24daa4",
                 "timestamp": "2026-09-28T00:00:00Z",
-                "changelog": "Restyled the admin page: separators between the tabs, grey \"Restore defaults\" buttons and a blue Save button. Visual only, no settings changed."
+                "changelog": "Release for Jellyfin 10.10.7"
             },
             {
                 "version": "1.3.0.0",
-                "targetAbi": "10.10.0.0",
+                "targetAbi": "10.10.7.0",
                 "sourceUrl": "https://github.com/chrissix666/Jellyfin-Cinema-Project/releases/download/v1.3.0.0/Cinema.Project_1.3.0.0_jellyfin-10.10.7.zip",
-                "checksum": "869fdebb34f37cfe18feacdd96bd35a3",
+                "checksum": "be2ca578233bdf2af58503d5ac538595",
                 "timestamp": "2026-08-29T00:00:00Z",
-                "changelog": "Renamed the configuration XML to Jellyfin.Plugin.CinemaProject.xml and moved the code namespace to Jellyfin.Plugin.CinemaProject. IMPORTANT when updating an existing install: stop Jellyfin, rename CinemaProjectLoader.xml in the plugin configurations folder to Jellyfin.Plugin.CinemaProject.xml, then start again, otherwise the plugin falls back to default settings."
+                "changelog": "Release for Jellyfin 10.10.7"
             },
             {
                 "version": "1.2.0.0",
-                "targetAbi": "10.10.0.0",
+                "targetAbi": "10.10.7.0",
                 "sourceUrl": "https://github.com/chrissix666/Jellyfin-Cinema-Project/releases/download/v1.2.0.0/Cinema.Project_1.2.0.0_jellyfin-10.10.7.zip",
-                "checksum": "0ec5f6a2605c44a7410583184d84b918",
+                "checksum": "f0bea853676a0cec8220c3ca6e980b9a",
                 "timestamp": "2026-08-24T00:00:00Z",
-                "changelog": "Added server-side persisted settings for Kiosk, Controls, Display, Room, Posters (including Ambient Mode), and Backwall (110 fields), plus Misc's own two remaining fields. Moved the earlier standalone Smart Launch settings page into this same 7-tab structure. Added a Backup/restore via code feature to Misc. Every setting is now feature complete and server-side persisted."
+                "changelog": "Release for Jellyfin 10.10.7"
             }
         ]
     }
