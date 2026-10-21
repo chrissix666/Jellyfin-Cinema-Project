@@ -6,6 +6,8 @@
 
 *Not affiliated with or endorsed by Jellyfin.*
 
+*Mentioned in an article on XDA Developers: [I turned my Jellyfin library into a virtual movie theater with one plugin](https://www.xda-developers.com/i-turned-my-jellyfin-library-into-a-virtual-movie-theater-with-one-plugin/)*
+
 ---
 
 ## Contents
