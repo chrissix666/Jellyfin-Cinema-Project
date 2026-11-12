@@ -1620,7 +1620,7 @@
     // Left-to-right order of the custom header buttons, so they line up the same
     // in both layouts no matter which script runs first. The Essentials plugin
     // hands in the admin's own order; without it this list holds.
-    const HEADER_BUTTON_ORDER = ['randomMovieButton', 'jf-scroll-btn', 'jf-fullscreen-btn', 'jf-globe-btn', 'jf-cinema-btn', 'jf-destroy-btn'];
+    const HEADER_BUTTON_ORDER = ['randomMovieButton', 'jf-scroll-btn', 'jf-fullscreen-btn', 'jf-globe-btn', 'jf-destroy-btn', 'jf-cinema-btn'];
 
     // In the classic header Random sits in its own wrapper div.
     function headerButtonRank(el) {
