@@ -1617,14 +1617,15 @@
     // box may have changed, not once at load (12.x keeps a hidden classic
     // header in the DOM, and its version is not known that early).
 
-    // Left-to-right order of the custom header buttons (Random, Autoscroll,
-    // Fullscreen, Cinema, Destroy), so they line up the same in both layouts
-    // no matter which script runs first.
+    // Left-to-right order of the custom header buttons, so they line up the same
+    // in both layouts no matter which script runs first. The Essentials plugin
+    // hands in the admin's own order; without it this list holds.
     const HEADER_BUTTON_ORDER = ['randomMovieButton', 'jf-scroll-btn', 'jf-fullscreen-btn', 'jf-globe-btn', 'jf-cinema-btn', 'jf-destroy-btn'];
 
     // In the classic header Random sits in its own wrapper div.
     function headerButtonRank(el) {
-        return el.id === 'randomMovieButtonContainer' ? 0 : HEADER_BUTTON_ORDER.indexOf(el.id);
+        const id = el.id === 'randomMovieButtonContainer' ? 'randomMovieButton' : el.id;
+        return ((window.JellyfinEssentials && window.JellyfinEssentials.headerOrder) || HEADER_BUTTON_ORDER).indexOf(id);
     }
 
     // Puts el into box right before the first element that belongs after
