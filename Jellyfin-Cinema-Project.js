@@ -1620,7 +1620,7 @@
     // Left-to-right order of the custom header buttons (Random, Autoscroll,
     // Fullscreen, Cinema, Destroy), so they line up the same in both layouts
     // no matter which script runs first.
-    const HEADER_BUTTON_ORDER = ['randomMovieButton', 'jf-scroll-btn', 'jf-fullscreen-btn', 'jf-cinema-btn', 'jf-destroy-btn'];
+    const HEADER_BUTTON_ORDER = ['randomMovieButton', 'jf-scroll-btn', 'jf-fullscreen-btn', 'jf-globe-btn', 'jf-cinema-btn', 'jf-destroy-btn'];
 
     // In the classic header Random sits in its own wrapper div.
     function headerButtonRank(el) {
